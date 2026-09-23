@@ -1,0 +1,67 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+header {
+    background-color: #d9534f;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    z-index: 1000;
+}
+
+#map {
+    flex-grow: 1;
+    width: 100%;
+}
+
+.container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #d9534f;
+            margin-bottom: 20px;
+        }
+        p {
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #555;
+        }
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            color: white;
+        }
+        .btn-driver {
+            background-color: #0275d8;
+        }
+        .btn-driver:hover {
+            background-color: #025aa5;
+        }
+        .btn-patient {
+            background-color: #d9534f;
+        }
+        .btn-patient:hover {
+            background-color: #c9302c;
+        }

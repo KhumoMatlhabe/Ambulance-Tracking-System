@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telemedicine Video Consultation</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: white; display: flex; flex-direction: column; height: 100vh; align-items: center; justify-content: center; }
+        .video-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 90%; max-width: 1000px; height: 60vh; }
+        video { width: 100%; height: 100%; background: #222; border-radius: 8px; object-fit: cover; border: 2px solid #444; }
+        .controls { margin-top: 20px; display: flex; gap: 15px; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .btn-call { background: #28a745; color: white; }
+        .btn-end { background: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+
+    <h2>Live Medical Consultation</h2>
+    
+    <div class="video-grid">
+        <video id="localVideo" autoplay muted playsinline></video>
+        <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+
+    <div class="controls">
+        <button class="btn-call" onclick="startCall()">Start Camera</button>
+        <button class="btn-end" onclick="endCall()">End Call</button>
+    </div>
+
+    <!-- Socket.IO Client Script for Signaling -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let localStream;
+
+        async function startCall() {
+            try {
+                // Access camera and microphone
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('localVideo').srcObject = localStream;
+                
+                // Notify server that user is ready for video signaling
+                socket.emit('join-room', { room: 'emergency-consultation' });
+                alert('Camera active. Waiting for remote medical officer...');
+            } catch (err) {
+                console.error('Error accessing media devices:', err);
+                alert('Could not access camera/microphone. Check permissions.');
+            }
+        }
+
+        function endCall() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            window.location.href = '/patient'; // Return to patient portal
+        }
+    </script>
+</body>
+</html>s

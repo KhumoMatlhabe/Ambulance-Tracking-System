@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambulance Driver Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+        }
+
+        /* Top Header Navigation Bar */
+        header {
+            background-color: #1a1a2e;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1001;
+        }
+        header h1 { font-size: 1.25rem; display: flex; align-items: center; gap: 8px; }
+        .status-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        /* Main Workspace layout */
+        .main-container {
+            display: flex;
+            flex-grow: 1;
+            height: calc(100vh - 55px);
+        }
+
+        /* Enhanced Sidebar Feed */
+        #sidebar {
+            width: 380px;
+            background: #ffffff;
+            border-right: 1px solid #e1e4e8;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.03);
+            z-index: 1000;
+        }
+        #sidebar h2 {
+            font-size: 1.1rem;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        #incident-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        /* Modern Incident Card Design */
+        .incident-card {
+            background: #fff;
+            border: 1px solid #e1e4e8;
+            border-left: 5px solid #dc3545;
+            padding: 14px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .incident-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+        }
+        .incident-card h4 { 
+            margin: 0 0 6px 0; 
+            font-size: 1rem; 
+            color: #dc3545; 
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .incident-card p { font-size: 0.88rem; color: #495057; margin: 0 0 10px 0; line-height: 1.4; }
+        
+        .btn-navigate {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        .btn-navigate:hover { background-color: #0056b3; }
+
+        /* Map Container */
+        #map {
+            flex-grow: 1;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Professional Top Header Bar -->
+    <header>
+        <h1>🚑 Ambulance Dispatch Control</h1>
+        <div class="status-badge">● ONLINE & LIVE</div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="main-container">
+        <!-- Sidebar for Live Incident Stream -->
+        <div id="sidebar">
+            <h2>Live Emergency Feed</h2>
+            <p class="subtitle">Incoming emergency alerts stream here in real-time.</p>
+            <ul id="incident-list">
+                <li id="no-incidents" style="color: #adb5bd; font-style: italic; text-align: center; margin-top: 30px;">
+                    No active emergencies reported.
+                </li>
+            </ul>
+        </div>
+
+        <!-- Leaflet Map View Container -->
+        <div id="map"></div>
+    </div>
+
+    <!-- Socket.IO & Leaflet JS CDNs -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        const socket = io();
+        let isOnline = true;
+
+        // Initialize Leaflet Map (Centered on Cape Town)
+        const map = L.map('map').setView([-33.9249, 18.4241], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const markers = {};
+        const incidentList = document.getElementById('incident-list');
+
+        // Toggle Driver Duty Status (Log in / Log off)
+        function toggleAuthStatus() {
+            isOnline = !isOnline;
+            const authBtn = document.getElementById('auth-btn');
+            const statusIndicator = document.getElementById('status-indicator');
+
+            if (isOnline) {
+                authBtn.textContent = 'Log Off Duty';
+                authBtn.className = 'btn-auth logged-in';
+                statusIndicator.textContent = 'ONLINE';
+                statusIndicator.className = 'status-badge';
+                socket.emit('driver-status', { status: 'online' });
+            } else {
+                authBtn.textContent = 'Log On Duty';
+                authBtn.className = 'btn-auth';
+                statusIndicator.textContent = 'OFFLINE';
+                statusIndicator.className = 'status-badge offline';
+                socket.emit('driver-status', { status: 'offline' });
+            }
+        }
+
+        // 1. Stream driver's GPS location if logged on
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    if (isOnline) {
+                        const { latitude, longitude } = position.coords;
+                        socket.emit('send-location', { vehicleId: 1, latitude, longitude });
+                    }
+                },
+                (error) => console.error('Driver GPS error:', error),
+                { enableHighAccuracy: true }
+            );
+        }
+
+        // 1. Stream driver's GPS location via Geolocation API
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    socket.emit('send-location', { vehicleId: 1, latitude, longitude });
+                },
+                (error) => console.error('Driver GPS error:', error),
+                { enableHighAccuracy: true }
+            );
+        }
+
+        // 2. Listen for incoming patient requests
+        socket.on('new-incident', (data) => {
+            const noIncidentsMsg = document.getElementById('no-incidents');
+            if (noIncidentsMsg) {
+                noIncidentsMsg.remove();
+            }
+
+            const incidentIcon = L.divIcon({
+                className: 'custom-incident-marker',
+                html: '<div style="background-color: #dc3545; width: 22px; height: 22px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(220,53,69,0.8);"></div>',
+                iconSize: [22, 22]
+            });
+
+            const marker = L.marker([data.latitude, data.longitude], { icon: incidentIcon })
+                .addTo(map)
+                .bindPopup(`<b>🚨 Emergency Alert</b><br>${data.description}`);
+            
+            markers[data.id] = marker;
+
+            const li = document.createElement('li');
+            li.className = 'incident-card';
+            li.innerHTML = `
+                <h4>🚨 New Emergency</h4>
+                <p><b>Details:</b> ${data.description}</p>
+                <p><b>GPS:</b> ${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}</p>
+                <button class="btn-navigate" onclick="focusOnIncident(${data.latitude}, ${data.longitude})">📍 Focus on Map</button>
+            `;
+            incidentList.prepend(li);
+        });
+
+        function focusOnIncident(lat, lon) {
+            map.setView([lat, lon], 17);
+        }
+    </script>
+</body>
+</html>

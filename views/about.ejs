@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Ambulance Tracking System</title>
+    <link rel="stylesheet" href="public/css/style.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        h1 {
+            color: #333;
+        }
+        p {
+            font-size: 18px;
+            line-height: 1.6;
+        }
+        .btn-group {
+            margin-top: 20px;
+            justify-content: center; /* Centers horizontally */
+             align-items: center;   
+
+
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-right: 10px;
+            text-decoration: none;
+            color: #fff;
+            border-radius: 5px;
+            justify-content: center;
+        }
+        .btn-patient {
+            justify-content: center;
+            background-color: #007bff;
+            
+        }
+        .btn-driver {
+            background-color: #28a745;
+            justify-content: center;
+            
+           
+
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ambulance Tracking System</h1>
+        <p>
+            Welcome to the Real-Time Emergency Response & Fleet Tracking Portal. 
+            This system coordinates emergency patient requests and live ambulance telemetry using WebSockets and PostgreSQL.
+        </p>
+        <div class="btn-group">
+            <a href="/patient" class="btn btn-patient">Patient Portal</a>
+            <a href="/driver" class="btn btn-driver">Driver Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

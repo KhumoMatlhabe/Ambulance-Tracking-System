@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Emergency Portal</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            max-width: 450px;
+            width: 100%;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #dc3545;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        p.subtitle {
+            color: #6c757d;
+            font-size: 0.95rem;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            resize: vertical;
+            height: 90px;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
+        }
+        .location-status {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #495057;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-panic {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
+        }
+        .btn-panic:hover { background-color: #c82333; }
+        .btn-panic:active { transform: scale(0.98); }
+        
+        #status-message {
+            margin-top: 20px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🚨 Emergency Assistance</h1>
+        <p class="subtitle">Request immediate ambulance dispatch to your current GPS location.</p>
+
+        <div class="form-group">
+            <label for="description">Emergency Details / Symptoms:</label>
+            <textarea id="description" placeholder="Briefly describe the medical emergency (e.g., severe chest pain, accident)..."></textarea>
+        </div>
+
+        <div class="location-status" id="location-status">
+            📍 Acquiring your GPS location...
+        </div>
+
+        <button class="btn-panic" onclick="sendEmergencyRequest()">REQUEST AMBULANCE NOW</button>
+
+        <div id="status-message"></div>
+    </div>
+
+    <!-- Socket.IO CDN -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let userLat = null;
+        let userLon = null;
+
+        // Automatically fetch patient GPS coordinates on page load
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLat = position.coords.latitude;
+                    userLon = position.coords.longitude;
+                    document.getElementById('location-status').innerHTML = 
+                        `✅ Location acquired: ${userLat.toFixed(4)}, ${userLon.toFixed(4)}`;
+                },
+                (error) => {
+                    console.error('Geolocation error:', error);
+                    document.getElementById('location-status').innerHTML = 
+                        `⚠️ Could not get precise location. Using default city coords.`;
+                    // Default fallback coordinates (e.g., Cape Town center)
+                    userLat = -33.9249;
+                    userLon = 18.4241;
+                },
+                { enableHighAccuracy: true }
+            );
+        } else {
+            document.getElementById('location-status').innerHTML = '⚠️ Geolocation is not supported by your browser.';
+            userLat = -33.9249;
+            userLon = 18.4241;
+        }
+
+        // Trigger emergency request transmission
+        function sendEmergencyRequest() {
+            if (userLat === null || userLon === null) {
+                alert('Please wait while we acquire your GPS location.');
+                return;
+            }
+
+            const description = document.getElementById('description').value.trim() || 'Medical Emergency Request';
+
+            const payload = {
+                description: description,
+                latitude: userLat,
+                longitude: userLon
+            };
+
+            // Emit the emergency event to the server via Socket.IO
+            socket.emit('emergency-request', payload);
+
+            // Show success confirmation feedback
+            const statusMsg = document.getElementById('status-message');
+            statusMsg.style.color = '#28a745';
+            statusMsg.textContent = '🚨 Emergency broadcast sent! Ambulance dispatch has been notified.';
+            
+            // Clear input box
+            document.getElementById('description').value = '';
+        }
+
+        app.get('/patient', ensureAuthenticated, (req, res) => {
+    res.render('patient');
+});
+    </script>
+</body>
+</html>

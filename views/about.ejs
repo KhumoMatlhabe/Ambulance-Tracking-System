@@ -1,74 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About - Ambulance Tracking System</title>
-    <link rel="stylesheet" href="public/css/style.css" />
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background-color: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-        }
-        h1 {
-            color: #333;
-        }
-        p {
-            font-size: 18px;
-            line-height: 1.6;
-        }
-        .btn-group {
-            margin-top: 20px;
-            justify-content: center; /* Centers horizontally */
-             align-items: center;   
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Emergency Command | Ambulance Tracking System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body
+    class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col justify-between"
+  >
+    <!-- Top Navigation Bar -->
+    <header
+      class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center"
+    >
+      <div class="flex items-center space-x-3">
+        <span class="h-3 w-3 bg-emerald-500 rounded-full animate-pulse"></span>
+        <span class="font-bold tracking-wide text-lg">EMS Command Portal</span>
+      </div>
+      <div class="text-sm text-slate-400">
+        System Status:
+        <span class="text-emerald-400 font-medium">Operational</span>
+      </div>
+    </header>
 
-
-        }
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            margin-right: 10px;
-            text-decoration: none;
-            color: #fff;
-            border-radius: 5px;
-            justify-content: center;
-        }
-        .btn-patient {
-            justify-content: center;
-            background-color: #007bff;
-            
-        }
-        .btn-driver {
-            background-color: #28a745;
-            justify-content: center;
-            
-           
-
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Ambulance Tracking System</h1>
-        <p>
-            Welcome to the Real-Time Emergency Response & Fleet Tracking Portal. 
-            This system coordinates emergency patient requests and live ambulance telemetry using WebSockets and PostgreSQL.
+    <!-- Main Content Hero -->
+    <main class="max-w-5xl mx-auto px-6 py-16 text-center">
+      <div
+        class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-10 shadow-2xl backdrop-blur-md"
+      >
+        <h1 class="text-4xl font-extrabold tracking-tight mb-4 text-white">
+          Real-Time Emergency Response & Fleet Tracking
+        </h1>
+        <p
+          class="text-slate-300 max-w-2xl mx-auto mb-8 text-base leading-relaxed"
+        >
+          Coordinating live ambulance telemetry via WebSockets, PostgreSQL, and
+          interactive mapping to optimize dispatch response times.
         </p>
-        <div class="btn-group">
-            <a href="/patient" class="btn btn-patient">Patient Portal</a>
-            <a href="/driver" class="btn btn-driver">Driver Dashboard</a>
+
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+          <a
+            href="/patient"
+            class="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition shadow-lg shadow-blue-600/30"
+          >
+            Patient Request Portal
+          </a>
+          <a
+            href="/driver"
+            class="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-lg shadow-emerald-600/30"
+          >
+            Driver Dispatch Dashboard
+          </a>
         </div>
-    </div>
-</body>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer
+      class="bg-slate-800/40 border-t border-slate-800 text-center py-4 text-xs text-slate-500"
+    >
+      Ambulance Tracking System &copy; 2026 | Secure Telemetry Feed
+    </footer>
+  </body>
 </html>

@@ -1,0 +1,152 @@
+/* --- CSS Reset & Base Styles --- */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #0f172a; /* Slate 900 */
+    color: #f8fafc; /* Slate 50 */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    line-height: 1.5;
+}
+
+/* --- Header / Navigation --- */
+header {
+    background-color: #1e293b; /* Slate 800 */
+    border-bottom: 1px solid #334155; /* Slate 700 */
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 700;
+    font-size: 1.125rem;
+    letter-spacing: -0.025em;
+}
+
+/* Pulsing Status Dot */
+.status-indicator {
+    height: 0.75rem;
+    width: 0.75rem;
+    background-color: #10b981; /* Emerald 500 */
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.system-status {
+    font-size: 0.875rem;
+    color: #94a3b8; /* Slate 400 */
+}
+
+.system-status span {
+    color: #34d399; /* Emerald 400 */
+    font-weight: 500;
+}
+
+/* --- Main Hero Section --- */
+main {
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem;
+    text-align: center;
+    width: 100%;
+}
+
+.hero-card {
+    background: rgba(30, 41, 59, 0.7); /* Slate 800 with transparency */
+    border: 1px solid rgba(51, 65, 85, 0.8); /* Slate 700 */
+    border-radius: 1rem;
+    padding: 3rem 2rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+}
+
+.hero-card h1 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 1rem;
+    color: #ffffff;
+}
+
+.hero-card p {
+    color: #cbd5e1; /* Slate 300 */
+    max-width: 42rem;
+    margin: 0 auto 2rem auto;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* --- Action Buttons --- */
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    justify-content: center;
+}
+
+@media (min-width: 640px) {
+    .action-buttons {
+        flex-direction: row;
+    }
+}
+
+.btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-patient {
+    background-color: #2563eb; /* Blue 600 */
+    color: #ffffff;
+}
+
+.btn-patient:hover {
+    background-color: #1d4ed8; /* Blue 700 */
+    transform: translateY(-1px);
+}
+
+.btn-driver {
+    background-color: #059669; /* Emerald 600 */
+    color: #ffffff;
+}
+
+.btn-driver:hover {
+    background-color: #047857; /* Emerald 700 */
+    transform: translateY(-1px);
+}
+
+/* --- Footer --- */
+footer {
+    background-color: rgba(30, 41, 59, 0.4);
+    border-top: 1px solid #1e293b;
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.75rem;
+    color: #64748b; /* Slate 500 */
+}

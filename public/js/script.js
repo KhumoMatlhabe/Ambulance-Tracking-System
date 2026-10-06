@@ -58,3 +58,18 @@ socket.on('user-disconnected', (id) => {
         delete markers[id];
     }
 });
+
+// Is notfication that is been triggered when an ambulance activates its sirens or changes status
+socket.on('broadcast-alert', function(alert) {
+    // Trigger a visual notification banner or audio chime
+    showNotificationBanner(alert.message, alert.status);
+    
+    // Optionally update the live map marker status
+    updateMapMarker(alert.ambulanceId, alert.status);
+});
+
+function showNotificationBanner(message, status) {
+    const banner = document.getElementById('alert-ticker');
+    banner.innerText = message;
+    banner.className = `alert-banner active status-${status.toLowerCase()}`;
+}

@@ -9,25 +9,38 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 
+// App Configurations
 app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'your_secret_key_here',
+    secret: process.env.SESSION_SECRET || 'ambulance-tracking-secret-key',
     resave: false,
     saveUninitialized: false
 }));
 
+// Authentication Middleware
 function ensureAuthenticated(req, res, next) {
-    if (req.session && req.session.user) return next();
+    if (req.session && req.session.user) {
+        return next();
+    }
     return res.redirect('/login');
 }
 
+// Routes
 app.get('/', (req, res) => res.render('about'));
 app.get('/driver', (req, res) => res.render('driver'));
-app.get('/patient', ensureAuthenticated, (req, res) => {
-    res.render('patient-portal', { user: req.session.user });
+
+app.get('/register', (req, res) => {
+    res.render('register');
+});
+
+app.post('/register', (req, res) => {
+    const { username, password } = req.body;
+    req.session.user = { username };
+    res.redirect('/patient');
 });
 
 app.get('/login', (req, res) => {
@@ -54,12 +67,18 @@ app.post('/login', (req, res) => {
     return res.redirect('/patient');
 });
 
+app.get('/patient', ensureAuthenticated, (req, res) => {
+    res.render('patient', { user: req.session.user });
+});
+
+// Socket.io Real-time Logic
 const activeVehicles = {};
 
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
-    socket.on('emergency-request', async (data = {}) => {
+    // 1. Emergency Requests
+    socket.on('emergency-request', async function (data = {}) {
         try {
             const query = `
                 INSERT INTO incidents (description, latitude, longitude, status)
@@ -74,6 +93,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // 2. Location Tracking
     socket.on('send-location', async (data = {}) => {
         const { vehicleId, latitude, longitude } = data;
         activeVehicles[socket.id] = { latitude, longitude };
@@ -91,6 +111,22 @@ io.on('connection', (socket) => {
         }
     });
 
+    // 3. Ambulance Status Updates (Fixed & Properly Nested)
+    socket.on('ambulance-status-update', (data) => {
+        let alertMessage = `Ambulance ${data.ambulanceId} status: ${data.status}`;
+        if (data.sirenActive) {
+            alertMessage = `🚨 EMERGENCY: Ambulance ${data.ambulanceId} has ACTIVATED SIRENS!`;
+        }
+
+        io.emit('broadcast-alert', {
+            ambulanceId: data.ambulanceId,
+            message: alertMessage,
+            timestamp: new Date().toLocaleTimeString(),
+            status: data.status
+        });
+    });
+
+    // 4. Disconnect Handling
     socket.on('disconnect', () => {
         delete activeVehicles[socket.id];
         io.emit('user-disconnected', socket.id);
@@ -98,6 +134,7 @@ io.on('connection', (socket) => {
     });
 });
 
+// Start Server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);

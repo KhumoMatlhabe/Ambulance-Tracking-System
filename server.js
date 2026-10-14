@@ -111,7 +111,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. Ambulance Status Updates (Fixed & Properly Nested)
+    // 3. Ambulance Status Updates
     socket.on('ambulance-status-update', (data) => {
         let alertMessage = `Ambulance ${data.ambulanceId} status: ${data.status}`;
         if (data.sirenActive) {

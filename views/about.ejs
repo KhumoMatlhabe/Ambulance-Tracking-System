@@ -1,64 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Emergency Command | Ambulance Tracking System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body
-    class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col justify-between"
-  >
-    <!-- Top Navigation Bar -->
-    <header
-      class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center"
-    >
-      <div class="flex items-center space-x-3">
-        <span class="h-3 w-3 bg-emerald-500 rounded-full animate-pulse"></span>
-        <span class="font-bold tracking-wide text-lg">EMS Command Portal</span>
-      </div>
-      <div class="text-sm text-slate-400">
-        System Status:
-        <span class="text-emerald-400 font-medium">Operational</span>
-      </div>
+<head>
+    <meta charset="UTF-8">
+    <title>Ambulance Tracking System - About</title>
+    <link rel="stylesheet" href="/css/style.css"> <!-- optional -->
+</head>
+<body>
+    <header>
+        <h1>Ambulance Tracking & Emergency Dispatch System</h1>
     </header>
+    
+    <main style="padding: 20px;">
+        <section>
+            <h2>Welcome to the Cape Town Emergency Response Platform</h2>
+            <p>Real-time ambulance dispatch, nearest hospital facility matching, and instant emergency medical consultations.</p>
+        </section>
 
-    <!-- Main Content Hero -->
-    <main class="max-w-5xl mx-auto px-6 py-16 text-center">
-      <div
-        class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-10 shadow-2xl backdrop-blur-md"
-      >
-        <h1 class="text-4xl font-extrabold tracking-tight mb-4 text-white">
-          Real-Time Emergency Response & Fleet Tracking
-        </h1>
-        <p
-          class="text-slate-300 max-w-2xl mx-auto mb-8 text-base leading-relaxed"
-        >
-          Coordinating live ambulance telemetry via WebSockets, PostgreSQL, and
-          interactive mapping to optimize dispatch response times.
-        </p>
-
-        <div class="flex flex-col sm:flex-row justify-center gap-4">
-          <a
-            href="/patient"
-            class="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition shadow-lg shadow-blue-600/30"
-          >
-            Patient Request Portal
-          </a>
-          <a
-            href="/driver"
-            class="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-lg shadow-emerald-600/30"
-          >
-            Driver Dispatch Dashboard
-          </a>
-        </div>
-      </div>
+        <section style="margin-top: 30px;">
+            <!-- Protected Action Buttons -->
+            <a href="/patient"><button>Patient Portal (Request Ambulance)</button></a>
+            <a href="/driver"><button>Driver Dashboard</button></a>
+            <a href="/consultation"><button>Online Medical Consultation</button></a>
+            
+            <% if (!locals.user) { %>
+                <div style="margin-top: 15px;">
+                    <a href="/login">Log In</a> | <a href="/register">Register</a>
+                </div>
+            <% } %>
+        </section>
     </main>
-
-    <footer
-      class="bg-slate-800/40 border-t border-slate-800 text-center py-4 text-xs text-slate-500"
-    >
-      Ambulance Tracking System &copy; 2026 | Secure Telemetry Feed
-    </footer>
-  </body>
+</body>
 </html>

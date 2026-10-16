@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Patient Login - Ambulance Tracking System</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { margin-bottom: 20px; color: #333; text-align: center; }
+        .error-msg { color: #dc3545; margin-bottom: 15px; font-size: 14px; text-align: center; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .links { margin-top: 15px; text-align: center; font-size: 14px; }
+        .links a { color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2>Patient Login</h2>
+        
+        <% if (locals.error && error) { %>
+            <div class="error-msg"><%= error %></div>
+        <% } %>
+
+        <form action="/login" method="POST">
+            <label>Email Address</label>
+            <input type="email" name="email" placeholder="Enter your email" required />
+            
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Enter your password" required />
+            
+            <button type="submit">Log In</button>
+        </form>
+
+        <div class="links">
+            Don't have an account? <a href="/register">Register here</a><br>
+            <a href="/">Back to Home</a>
+        </div>
+    </div>
+</body>
+</html>

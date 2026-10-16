@@ -29,55 +29,90 @@ function ensureAuthenticated(req, res, next) {
     return res.redirect('/login');
 }
 
-// Routes
+// --- Express Routes ---
 app.get('/', (req, res) => res.render('about'));
 app.get('/driver', (req, res) => res.render('driver'));
 
 app.get('/register', (req, res) => {
-    res.render('register');
+    res.render('register', { error: null });
 });
 
-app.post('/register', (req, res) => {
-    const { username, password } = req.body;
-    req.session.user = { username };
-    res.redirect('/patient');
+app.post('/register', async (req, res) => {
+    const { username, email, password } = req.body;
+    try {
+        const query = `
+            INSERT INTO users (username, email, password)
+            VALUES ($1, $2, $3)
+            RETURNING id, username, email;
+        `;
+        const values = [username || email.split('@')[0], email, password];
+        const result = await pool.query(query, values);
+        req.session.user = result.rows[0];
+        res.redirect('/patient');
+    } catch (err) {
+        console.error('Registration error:', err.message);
+        res.status(400).render('register', { error: 'Registration failed. Email or username may already be in use.' });
+    }
 });
 
 app.get('/login', (req, res) => {
-    res.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head><meta charset="UTF-8"><title>Patient Login</title></head>
-        <body>
-            <h2>Patient Login</h2>
-            <form action="/login" method="POST">
-                <input type="email" name="email" placeholder="Enter your email" required />
-                <input type="password" name="password" placeholder="Enter your password" required />
-                <button type="submit">Log In</button>
-            </form>
-        </body>
-        </html>
-    `);
+    res.render('login', { error: null });
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { email, password } = req.body;
-    if (!email || !password) return res.redirect('/login');
-    req.session.user = { email };
-    return res.redirect('/patient');
+    if (!email || !password) {
+        return res.render('login', { error: 'Please fill in all fields.' });
+    }
+    try {
+        const query = `SELECT * FROM users WHERE email = $1 AND password = $2`;
+        const result = await pool.query(query, [email, password]);
+        if (result.rows.length === 0) {
+            return res.render('login', { error: 'Invalid email or password.' });
+        }
+        req.session.user = result.rows[0];
+        return res.redirect('/patient');
+    } catch (err) {
+        console.error('Login error:', err.message);
+        res.status(500).render('login', { error: 'An error occurred.' });
+    }
 });
 
 app.get('/patient', ensureAuthenticated, (req, res) => {
     res.render('patient', { user: req.session.user });
 });
 
-// Socket.io Real-time Logic
+// Consultation Page Route
+app.get('/consultation', ensureAuthenticated, (req, res) => {
+    res.render('consultation', { user: req.session.user });
+});
+
+// Handle Appointment Booking (Nearest Hospital)
+app.post('/api/book-appointment', ensureAuthenticated, async (req, res) => {
+    const { hospitalName, department, appointmentDate } = req.body;
+    const userEmail = req.session.user.email || req.session.user.username;
+
+    try {
+        const query = `
+            INSERT INTO appointments (user_email, hospital_name, department, appointment_date, status)
+            VALUES ($1, $2, $3, $4, 'confirmed')
+            RETURNING *;
+        `;
+        const result = await pool.query(query, [userEmail, hospitalName, department, appointmentDate]);
+        res.status(200).json({ success: true, appointment: result.rows[0] });
+    } catch (err) {
+        console.error('Appointment booking error:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to book appointment.' });
+    }
+});
+
+// --- Socket.io Real-time Logic ---
 const activeVehicles = {};
 
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
-    // 1. Emergency Requests
+    // 1. Emergency Requests & Hospital Matching
     socket.on('emergency-request', async function (data = {}) {
         try {
             const query = `
@@ -93,7 +128,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 2. Location Tracking
+    // 2. Location Tracking & Logging
     socket.on('send-location', async (data = {}) => {
         const { vehicleId, latitude, longitude } = data;
         activeVehicles[socket.id] = { latitude, longitude };
@@ -126,7 +161,33 @@ io.on('connection', (socket) => {
         });
     });
 
-    // 4. Disconnect Handling
+    // 4. WebRTC Signaling for Video Consultation (Properly Nested)
+    socket.on('join-room', (data) => {
+        const roomName = data && data.room ? data.room : 'emergency-consultation';
+        socket.join(roomName);
+        console.log(`User ${socket.id} joined video room: ${roomName}`);
+        socket.to(roomName).emit('user-joined', socket.id);
+    });
+
+    socket.on('offer', (data) => {
+        if (data && data.room) {
+            socket.to(data.room).emit('offer', data.offer);
+        }
+    });
+
+    socket.on('answer', (data) => {
+        if (data && data.room) {
+            socket.to(data.room).emit('answer', data.answer);
+        }
+    });
+
+    socket.on('ice-candidate', (data) => {
+        if (data && data.room) {
+            socket.to(data.room).emit('ice-candidate', data.candidate);
+        }
+    });
+
+    // 5. Disconnect Handling
     socket.on('disconnect', () => {
         delete activeVehicles[socket.id];
         io.emit('user-disconnected', socket.id);
@@ -134,7 +195,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// Start Server
+// --- Start Server ---
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);

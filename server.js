@@ -195,6 +195,50 @@ io.on('connection', (socket) => {
     });
 });
 
+//6 Adding a  wallet upon request of amabulance driver  
+// View user wallet balance on patient profile
+app.get('/patient', ensureAuthenticated, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT username, email, wallet_balance FROM users WHERE id = $1', [req.session.user.id]);
+        const currentUser = result.rows[0];
+        res.render('patient', { user: currentUser });
+    } catch (err) {
+        console.error('Error fetching wallet balance:', err.message);
+        res.render('patient', { user: req.session.user });
+    }
+});
+
+// Handle adding funds to the wallet
+app.post('/api/wallet/topup', ensureAuthenticated, async (req, res) => {
+    const { amount } = req.body;
+    const userId = req.session.user.id;
+
+    if (!amount || isNaN(amount) || amount <= 0) {
+        return res.status(400).json({ success: false, error: 'Invalid top-up amount.' });
+    }
+
+    try {
+        const query = `
+            UPDATE users 
+            SET wallet_balance = wallet_balance + $1 
+            WHERE id = $2 
+            RETURNING wallet_balance;
+        `;
+        const result = await pool.query(query, [amount, userId]);
+        
+        // Update session balance as well
+        req.session.user.wallet_balance = result.rows[0].wallet_balance;
+
+        res.status(200).json({ 
+            success: true, 
+            newBalance: result.rows[0].wallet_balance 
+        });
+    } catch (err) {
+        console.error('Wallet top-up error:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to update wallet balance.' });
+    }
+});
+
 // --- Start Server ---
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

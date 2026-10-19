@@ -1,23 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ambulance Tracking System</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ambulance Tracking System - Live Telemetry</title>
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+    />
     <link rel="stylesheet" href="/css/style.css" />
-</head>
-<body>
+    <style>
+      :root {
+        --bg-main: #0f172a;
+        --bg-card: #1e293b;
+        --border-color: #334155;
+        --accent-blue: #0ea5e9;
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          "Segoe UI",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background-color: var(--bg-main);
+        color: var(--text-primary);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+      header {
+        background-color: var(--bg-card);
+        border-bottom: 1px solid var(--border-color);
+        padding: 16px 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 1000;
+      }
+      header h1 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--accent-blue);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .nav-link {
+        color: var(--text-primary);
+        background-color: #334155;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: background 0.15s;
+      }
+      .nav-link:hover {
+        background-color: var(--accent-blue);
+        color: #fff;
+      }
+      #map {
+        flex-grow: 1;
+        width: 100%;
+        height: calc(100vh - 65px);
+        z-index: 1;
+      }
+    </style>
+  </head>
+  <body>
     <header>
-        <h1>Emergency Vehicle Real-Time Tracking</h1>
+      <h1><span>🚑</span> Emergency Vehicle Real-Time Tracking</h1>
+      <a href="/" class="nav-link">← Home Dashboard</a>
     </header>
-    
+
     <div id="map"></div>
 
     <!-- Socket.IO & Leaflet JS -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="/js/script.js"></script>
-</body>
+  </body>
 </html>

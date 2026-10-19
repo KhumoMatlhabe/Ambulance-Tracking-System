@@ -9,6 +9,14 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
     />
     <style>
+      :root {
+        --bg-main: #0f172a;
+        --bg-card: #1e293b;
+        --border-color: #334155;
+        --accent-blue: #0ea5e9;
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+      }
       * {
         box-sizing: border-box;
         margin: 0;
@@ -19,14 +27,15 @@
         flex-direction: column;
         height: 100vh;
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f0f2f5;
+        background-color: var(--bg-main);
+        color: var(--text-primary);
       }
 
       /* Top Header Navigation Bar */
       header {
-        background-color: #1a1a2e;
-        color: white;
-        padding: 12px 20px;
+        background-color: var(--bg-card);
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -38,9 +47,23 @@
         display: flex;
         align-items: center;
         gap: 8px;
+        color: var(--accent-blue);
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+      .fleet-badge {
+        background-color: var(--border-color);
+        color: #38bdf8;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
       }
       .status-badge {
-        background-color: #28a745;
+        background-color: #22c55e;
         color: white;
         padding: 4px 10px;
         border-radius: 12px;
@@ -58,9 +81,9 @@
 
       /* Enhanced Sidebar Feed */
       #sidebar {
-        width: 380px;
-        background: #ffffff;
-        border-right: 1px solid #e1e4e8;
+        width: 400px;
+        background: var(--bg-card);
+        border-right: 1px solid var(--border-color);
         display: flex;
         flex-direction: column;
         padding: 20px;
@@ -70,16 +93,16 @@
       }
       #sidebar h2 {
         font-size: 1.1rem;
-        color: #2c3e50;
+        color: var(--text-primary);
         margin-bottom: 5px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
       .subtitle {
         font-size: 0.85rem;
-        color: #6c757d;
+        color: var(--text-secondary);
         margin-bottom: 15px;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid var(--border-color);
         padding-bottom: 10px;
       }
       #incident-list {
@@ -89,51 +112,51 @@
 
       /* Modern Incident Card Design */
       .incident-card {
-        background: #fff;
-        border: 1px solid #e1e4e8;
-        border-left: 6px solid #dc3545;
+        background: var(--bg-main);
+        border: 1px solid var(--border-color);
+        border-left: 6px solid #e11d48;
         padding: 14px;
         margin-bottom: 12px;
         border-radius: 6px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
-        transition:
-          transform 0.2s ease,
-          box-shadow 0.2s ease;
-      }
-      .incident-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
       }
       .incident-card h4 {
         margin: 0 0 6px 0;
         font-size: 1rem;
-        color: #dc3545;
+        color: #e11d48;
         display: flex;
         align-items: center;
         gap: 6px;
       }
       .incident-card p {
         font-size: 0.88rem;
-        color: #495057;
-        margin: 0 0 10px 0;
+        color: #cbd5e1;
+        margin: 0 0 8px 0;
         line-height: 1.4;
       }
 
-      .btn-navigate {
-        background-color: #007bff;
+      .btn-action {
+        background-color: var(--accent-blue);
         color: white;
         border: none;
-        padding: 7px 12px;
+        padding: 8px 12px;
         border-radius: 4px;
         cursor: pointer;
         font-size: 0.85rem;
         font-weight: 600;
         width: 100%;
-        margin-top: 5px;
+        margin-top: 6px;
         transition: background-color 0.2s;
       }
+      .btn-action:hover {
+        background-color: #0284c7;
+      }
+      .btn-navigate {
+        background-color: var(--border-color);
+        color: var(--text-primary);
+      }
       .btn-navigate:hover {
-        background-color: #0056b3;
+        background-color: #475569;
       }
 
       /* Map Container */
@@ -147,12 +170,58 @@
     <!-- Professional Top Header Bar -->
     <header>
       <h1>🚑 Ambulance Dispatch Control</h1>
-      <div class="status-badge">● ONLINE & LIVE</div>
+      <div class="header-right">
+        <!-- Demo Simulation Button for Live Presentation -->
+        <button
+          onclick="triggerDemoEmergency()"
+          class="btn-action"
+          style="
+            width: auto;
+            padding: 6px 14px;
+            background-color: #e11d48;
+            margin-top: 0;
+            font-size: 0.8rem;
+          "
+        >
+          ⚡ Simulate Emergency
+        </button>
+        <button
+          onclick="openAuditModal()"
+          class="btn-action"
+          style="
+            width: auto;
+            padding: 6px 14px;
+            background-color: var(--border-color);
+            margin-top: 0;
+            font-size: 0.8rem;
+          "
+        >
+          📋 Audit Log
+        </button>
+        <span class="fleet-badge">Active Fleet: Live</span>
+        <span style="font-size: 0.9rem; color: var(--text-secondary)"
+          >Unit:
+          <strong
+            ><%= (typeof user !== 'undefined' && user && user.username) ?
+            user.username : 'Dispatcher' %></strong
+          ></span
+        >
+        <div class="status-badge">● ONLINE & LIVE</div>
+        <a
+          href="/login"
+          style="
+            color: #f43f5e;
+            font-size: 0.85rem;
+            text-decoration: none;
+            font-weight: bold;
+          "
+          >Logout</a
+        >
+      </div>
     </header>
 
     <!-- Main Workspace -->
     <div class="main-container">
-      <!-- Sidebar for Live Incident Stream -->
       <div id="sidebar">
         <h2>Live Emergency Feed</h2>
         <p class="subtitle">
@@ -162,7 +231,7 @@
           <li
             id="no-incidents"
             style="
-              color: #adb5bd;
+              color: var(--text-secondary);
               font-style: italic;
               text-align: center;
               margin-top: 30px;
@@ -177,38 +246,185 @@
       <div id="map"></div>
     </div>
 
+    <!-- Audit Trail Modal Structure -->
+    <div
+      id="auditModal"
+      style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.85);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+      "
+    >
+      <div
+        style="
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          width: 850px;
+          max-height: 80vh;
+          border-radius: 12px;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        "
+      >
+        <div
+          style="
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          "
+        >
+          <h3 style="color: #38bdf8; margin: 0; font-size: 1.1rem">
+            📊 Municipal Incident Audit Trail & Compliance Log
+          </h3>
+          <button
+            onclick="closeAuditModal()"
+            style="
+              background: none;
+              border: none;
+              color: var(--text-secondary);
+              font-size: 1.2rem;
+              cursor: pointer;
+            "
+          >
+            ✕
+          </button>
+        </div>
+        <div style="padding: 20px; overflow-y: auto; flex-grow: 1">
+          <table
+            style="
+              width: 100%;
+              border-collapse: collapse;
+              text-align: left;
+              font-size: 0.88rem;
+            "
+          >
+            <thead>
+              <tr
+                style="
+                  color: var(--text-secondary);
+                  border-bottom: 1px solid var(--border-color);
+                "
+              >
+                <th style="padding: 10px">ID</th>
+                <th style="padding: 10px">Description</th>
+                <th style="padding: 10px">Status</th>
+                <th style="padding: 10px">Claimed By</th>
+                <th style="padding: 10px">Reported Time</th>
+                <th style="padding: 10px">Completed Time</th>
+              </tr>
+            </thead>
+            <tbody id="auditTableBody">
+              <tr>
+                <td
+                  colspan="6"
+                  style="
+                    text-align: center;
+                    padding: 20px;
+                    color: var(--text-secondary);
+                  "
+                >
+                  Loading compliance records...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Socket.IO & Leaflet JS CDNs -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
       const socket = io();
       let isOnline = true;
+      let driverLat = -33.9249; // Default Cape Town fallback
+      let driverLon = 18.4241;
 
       // Initialize Leaflet Map (Centered on Cape Town)
-      const map = L.map("map").setView([-33.9249, 18.4241], 13);
+      const map = L.map("map").setView([driverLat, driverLon], 13);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap contributors",
       }).addTo(map);
 
       const markers = {};
+      const vehicleMarkers = {}; // Stores other online drivers/ambulances
+      const polylines = {};
       const incidentList = document.getElementById("incident-list");
 
-      // 1. Stream driver's GPS location if logged on
+      // 1. Stream driver's live GPS location & listen for other active units
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
           (position) => {
+            driverLat = position.coords.latitude;
+            driverLon = position.coords.longitude;
             if (isOnline) {
-              const { latitude, longitude } = position.coords;
               socket.emit("send-location", {
-                vehicleId: 1,
-                latitude,
-                longitude,
+                vehicleId:
+                  "<%= (typeof user !== 'undefined' && user && user.username) ? user.username : 'Unit' %>",
+                latitude: driverLat,
+                longitude: driverLon,
               });
             }
           },
           (error) => console.error("Driver GPS error:", error),
           { enableHighAccuracy: true },
         );
+      }
+
+      // Listen for other active response units moving on the map
+      socket.on("receive-location", (data) => {
+        if (data.id === socket.id) return;
+
+        const ambulanceIcon = L.divIcon({
+          className: "other-vehicle-marker",
+          html: '<div style="background-color: #38bdf8; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 8px rgba(56,189,248,0.8); text-align: center; font-size: 10px; line-height: 18px;">🚑</div>',
+          iconSize: [22, 22],
+        });
+
+        if (vehicleMarkers[data.id]) {
+          vehicleMarkers[data.id].setLatLng([data.latitude, data.longitude]);
+        } else {
+          const vMarker = L.marker([data.latitude, data.longitude], {
+            icon: ambulanceIcon,
+          })
+            .addTo(map)
+            .bindPopup(
+              `<b>🚑 Active Unit</b><br>ID: ${data.vehicleId || "Response Unit"}`,
+            );
+          vehicleMarkers[data.id] = vMarker;
+        }
+      });
+
+      socket.on("user-disconnected", (id) => {
+        if (vehicleMarkers[id]) {
+          map.removeLayer(vehicleMarkers[id]);
+          delete vehicleMarkers[id];
+        }
+      });
+
+      // One-Click Simulation Function for Live Presentation
+      function triggerDemoEmergency() {
+        const simLat = -33.9188 + (Math.random() - 0.5) * 0.05;
+        const simLon = 18.4233 + (Math.random() - 0.5) * 0.05;
+
+        socket.emit("emergency-request", {
+          description:
+            "SIMULATED DEMO: Multi-vehicle collision with critical trauma",
+          latitude: simLat,
+          longitude: simLon,
+        });
       }
 
       // 2. Listen for incoming patient requests
@@ -218,9 +434,8 @@
           noIncidentsMsg.remove();
         }
 
-        // Unmissable pop-up alert for driver verification
         alert(
-          `🚨 EMERGENCY DISPATCH RECEIVED!\n\nDetails: ${data.description}\nNearest Hospital: ${data.nearestHospital ? data.nearestHospital.name : "Calculating..."}`,
+          `🚨 EMERGENCY DISPATCH RECEIVED!\n\nDetails: ${data.description}\nHospital: ${data.nearestHospital ? data.nearestHospital.name : "Calculating..."}`,
         );
 
         try {
@@ -232,7 +447,7 @@
 
         const incidentIcon = L.divIcon({
           className: "custom-incident-marker",
-          html: '<div style="background-color: #dc3545; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(220,53,69,0.9);"></div>',
+          html: '<div style="background-color: #e11d48; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(225,29,72,0.9);"></div>',
           iconSize: [24, 24],
         });
 
@@ -255,42 +470,89 @@
             <p><b>Details:</b> ${data.description}</p>
             <p><b>Nearest Hospital:</b> ${data.nearestHospital ? data.nearestHospital.name : "Locating..."}</p>
             <p><b>GPS:</b> ${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}</p>
-            <button class="btn-navigate" id="btn-accept-${data.id}" style="background-color: #28a745;" onclick="acceptDispatch(${data.id})">✅ Accept & Route</button>
-            <button class="btn-navigate" onclick="focusOnIncident(${data.latitude}, ${data.longitude})">📍 Focus on Map</button>
+            <button class="btn-action" id="btn-action-${data.id}" style="background-color: #22c55e;" onclick="progressMission(${data.id}, ${data.latitude}, ${data.longitude}, 'accept')">✅ Accept & Route</button>
+            <button class="btn-action btn-navigate" onclick="focusOnIncident(${data.latitude}, ${data.longitude})">📍 Focus on Map</button>
         `;
         incidentList.prepend(li);
         map.setView([data.latitude, data.longitude], 15);
       });
 
-      // Driver accepts a specific incident
-      function acceptDispatch(incidentId) {
-        socket.emit("accept-incident", {
-          incidentId: incidentId,
-          driverId: socket.id,
-        });
+      // Mission Workflow Progression Handler
+      function progressMission(incidentId, lat, lon, stage) {
+        const btn = document.getElementById(`btn-action-${incidentId}`);
 
-        const btn = document.getElementById(`btn-accept-${incidentId}`);
-        if (btn) {
-          btn.textContent = "🔒 Assigned to You";
-          btn.style.backgroundColor = "#6c757d";
-          btn.disabled = true;
+        if (stage === "accept") {
+          socket.emit("accept-incident", {
+            incidentId: incidentId,
+            driverId: socket.id,
+          });
+
+          const routeLine = L.polyline(
+            [
+              [driverLat, driverLon],
+              [lat, lon],
+            ],
+            {
+              color: "#0ea5e9",
+              weight: 5,
+              dashArray: "6, 8",
+            },
+          ).addTo(map);
+          polylines[incidentId] = routeLine;
+
+          btn.textContent = "📍 Arrived at Scene";
+          btn.style.backgroundColor = "#eab308";
+          btn.setAttribute(
+            "onclick",
+            `progressMission(${incidentId}, ${lat}, ${lon}, 'arrived')`,
+          );
+          alert(
+            `Accepted Dispatch #${incidentId}. Route line rendered on map.`,
+          );
+        } else if (stage === "arrived") {
+          btn.textContent = "🚑 Transporting to Hospital";
+          btn.style.backgroundColor = "#a855f7";
+          btn.setAttribute(
+            "onclick",
+            `progressMission(${incidentId}, ${lat}, ${lon}, 'transporting')`,
+          );
+          alert(`Status updated: Arrived at patient scene.`);
+        } else if (stage === "transporting") {
+          btn.textContent = "✅ Complete Dispatch";
+          btn.style.backgroundColor = "#3b82f6";
+          btn.setAttribute(
+            "onclick",
+            `progressMission(${incidentId}, ${lat}, ${lon}, 'complete')`,
+          );
+          alert(`Status updated: En route to hospital facility.`);
+        } else if (stage === "complete") {
+          if (markers[incidentId]) {
+            map.removeLayer(markers[incidentId]);
+            delete markers[incidentId];
+          }
+          if (polylines[incidentId]) {
+            map.removeLayer(polylines[incidentId]);
+            delete polylines[incidentId];
+          }
+          const card = document.getElementById(`incident-card-${incidentId}`);
+          if (card) card.remove();
+          alert(`Mission #${incidentId} completed successfully and archived.`);
         }
-        alert(
-          `You have accepted Dispatch #${incidentId}. Other reports remain available for other drivers.`,
-        );
       }
 
-      // Sync across all driver views when an incident is claimed
       socket.on("incident-accepted", (data) => {
         const card = document.getElementById(
           `incident-card-${data.incidentId}`,
         );
         if (card) {
-          const btn = card.querySelector(`#btn-accept-${data.incidentId}`);
-          if (btn && !btn.disabled) {
+          const btn = card.querySelector(".btn-action");
+          if (
+            btn &&
+            !btn.textContent.includes("Assigned") &&
+            !btn.textContent.includes("Arrived")
+          ) {
             btn.textContent = "⚠️ Claimed by Another Unit";
-            btn.style.backgroundColor = "#ffc107";
-            btn.style.color = "#000";
+            btn.style.backgroundColor = "#64748b";
             btn.disabled = true;
           }
         }
@@ -298,6 +560,45 @@
 
       function focusOnIncident(lat, lon) {
         map.setView([lat, lon], 17);
+      }
+
+      // Audit Log Modal Script Functions
+      async function openAuditModal() {
+        document.getElementById("auditModal").style.display = "flex";
+        try {
+          const res = await fetch("/api/incidents/history");
+          const data = await res.json();
+          if (data.success) {
+            const tbody = document.getElementById("auditTableBody");
+            tbody.innerHTML = "";
+            if (data.incidents.length === 0) {
+              tbody.innerHTML =
+                '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-secondary);">No historical incident records found.</td></tr>';
+              return;
+            }
+            data.incidents.forEach((inc) => {
+              const row = document.createElement("tr");
+              row.style.borderBottom = "1px solid var(--border-color)";
+              row.innerHTML = `
+                      <td style="padding: 12px; color: var(--text-primary);">#${inc.id}</td>
+                      <td style="padding: 12px; color: #cbd5e1;">${inc.description}</td>
+                      <td style="padding: 12px;"><span style="padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; background: ${inc.status === "open" ? "#e11d48" : inc.status === "assigned" ? "#eab308" : "#22c55e"}; color: white;">${inc.status}</span></td>
+                      <td style="padding: 12px; color: #38bdf8;">${inc.claimed_by || "Unassigned"}</td>
+                      <td style="padding: 12px; color: var(--text-secondary);">${new Date(inc.created_at).toLocaleTimeString()}</td>
+                      <td style="padding: 12px; color: var(--text-secondary);">${inc.completed_at ? new Date(inc.completed_at).toLocaleTimeString() : "Pending"}</td>
+                  `;
+              tbody.appendChild(row);
+            });
+          }
+        } catch (err) {
+          console.error("Failed to load audit trail:", err);
+          document.getElementById("auditTableBody").innerHTML =
+            '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #f43f5e;">Error loading compliance logs from server.</td></tr>';
+        }
+      }
+
+      function closeAuditModal() {
+        document.getElementById("auditModal").style.display = "none";
       }
     </script>
   </body>

@@ -32,7 +32,6 @@ function ensureAuthenticated(req, res, next) {
 
 // --- Express Views & Authentication Routes ---
 app.get('/', (req, res) => res.render('about'));
-app.get('/driver', (req, res) => res.render('driver'));
 
 app.get('/register', (req, res) => {
     res.render('register', { error: null });
@@ -76,6 +75,44 @@ app.post('/login', async (req, res) => {
     } catch (err) {
         console.error('Login error:', err.message);
         res.status(500).render('login', { error: 'An error occurred during login.' });
+    }
+});
+
+// Driver Login Routes
+app.get('/driver-login', (req, res) => {
+    res.render('driver-login', { error: null });
+});
+
+app.post('/driver-login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.render('driver-login', { error: 'Please fill in all fields.' });
+    }
+    try {
+        const query = `SELECT * FROM users WHERE email = $1 AND password = $2`;
+        const result = await pool.query(query, [email, password]);
+        
+        if (result.rows.length === 0) {
+            return res.render('driver-login', { error: 'Invalid driver email or password.' });
+        }
+        
+        req.session.user = result.rows[0];
+        return res.redirect('/driver');
+    } catch (err) {
+        console.error('Driver login error:', err.message);
+        res.status(500).render('driver-login', { error: 'An error occurred during login.' });
+    }
+});
+
+// Protected Driver Dashboard Route
+app.get('/driver', ensureAuthenticated, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [req.session.user.id]);
+        const currentDriver = result.rows[0] || req.session.user;
+        res.render('driver', { user: currentDriver });
+    } catch (err) {
+        console.error('Error fetching driver details:', err.message);
+        res.render('driver', { user: req.session.user });
     }
 });
 
@@ -206,7 +243,6 @@ io.on('connection', (socket) => {
             if (result.rows.length > 0) {
                 const updatedIncident = result.rows[0];
                 
-                // Broadcast to all drivers that this report is now claimed
                 io.emit('incident-accepted', {
                     incidentId: updatedIncident.id,
                     driverId: driverId || socket.id
@@ -254,6 +290,22 @@ io.on('connection', (socket) => {
         delete activeVehicles[socket.id];
         io.emit('user-disconnected', socket.id);
     });
+});
+
+// Fetch all past and active incidents for the audit trail log
+app.get('/api/incidents/history', ensureAuthenticated, async (req, res) => {
+    try {
+        const query = `
+            SELECT id, description, latitude, longitude, status, claimed_by, created_at, completed_at
+            FROM incidents
+            ORDER BY created_at DESC;
+        `;
+        const result = await pool.query(query);
+        res.status(200).json({ success: true, incidents: result.rows });
+    } catch (err) {
+        console.error('Error fetching incident history:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to retrieve incident audit log.' });
+    }
 });
 
 // --- Start Server ---

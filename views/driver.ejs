@@ -53,7 +53,7 @@
       .main-container {
         display: flex;
         flex-grow: 1;
-        height: calc(100vh - 55px);
+        height: calc(100vh - 65px);
       }
 
       /* Enhanced Sidebar Feed */
@@ -91,7 +91,7 @@
       .incident-card {
         background: #fff;
         border: 1px solid #e1e4e8;
-        border-left: 5px solid #dc3545;
+        border-left: 6px solid #dc3545;
         padding: 14px;
         margin-bottom: 12px;
         border-radius: 6px;
@@ -129,6 +129,7 @@
         font-size: 0.85rem;
         font-weight: 600;
         width: 100%;
+        margin-top: 5px;
         transition: background-color 0.2s;
       }
       .btn-navigate:hover {
@@ -192,27 +193,6 @@
       const markers = {};
       const incidentList = document.getElementById("incident-list");
 
-      // Toggle Driver Duty Status (Log in / Log off)
-      function toggleAuthStatus() {
-        isOnline = !isOnline;
-        const authBtn = document.getElementById("auth-btn");
-        const statusIndicator = document.getElementById("status-indicator");
-
-        if (isOnline) {
-          authBtn.textContent = "Log Off Duty";
-          authBtn.className = "btn-auth logged-in";
-          statusIndicator.textContent = "ONLINE";
-          statusIndicator.className = "status-badge";
-          socket.emit("driver-status", { status: "online" });
-        } else {
-          authBtn.textContent = "Log On Duty";
-          authBtn.className = "btn-auth";
-          statusIndicator.textContent = "OFFLINE";
-          statusIndicator.className = "status-badge offline";
-          socket.emit("driver-status", { status: "offline" });
-        }
-      }
-
       // 1. Stream driver's GPS location if logged on
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
@@ -237,7 +217,12 @@
         if (noIncidentsMsg) {
           noIncidentsMsg.remove();
         }
-        //this part plays a sound when a new incident is received, but it may be blocked by the browser if the user hasn't interacted with the page yet
+
+        // Unmissable pop-up alert for driver verification
+        alert(
+          `🚨 EMERGENCY DISPATCH RECEIVED!\n\nDetails: ${data.description}\nNearest Hospital: ${data.nearestHospital ? data.nearestHospital.name : "Calculating..."}`,
+        );
+
         try {
           const audio = new Audio(
             "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
@@ -247,29 +232,73 @@
 
         const incidentIcon = L.divIcon({
           className: "custom-incident-marker",
-          html: '<div style="background-color: #dc3545; width: 22px; height: 22px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(220,53,69,0.8);"></div>',
-          iconSize: [22, 22],
+          html: '<div style="background-color: #dc3545; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(220,53,69,0.9);"></div>',
+          iconSize: [24, 24],
         });
 
         const marker = L.marker([data.latitude, data.longitude], {
           icon: incidentIcon,
         })
           .addTo(map)
-          .bindPopup(`<b>🚨 Emergency Alert</b><br>${data.description}`);
+          .bindPopup(
+            `<b>🚨 Emergency Alert #${data.id}</b><br>${data.description}<br><b>Hospital:</b> ${data.nearestHospital ? data.nearestHospital.name : "N/A"}`,
+          )
+          .openPopup();
 
         markers[data.id] = marker;
 
         const li = document.createElement("li");
         li.className = "incident-card";
+        li.id = `incident-card-${data.id}`;
         li.innerHTML = `
-                <h4>🚨 New Emergency</h4>
-                <p><b>Details:</b> ${data.description}</p>
-                <p><b>GPS:</b> ${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}</p>
-                <button class="btn-navigate" onclick="focusOnIncident(${data.latitude}, ${data.longitude})">📍 Focus on Map</button>
-            `;
+            <h4>🚨 Emergency Dispatch #${data.id}</h4>
+            <p><b>Details:</b> ${data.description}</p>
+            <p><b>Nearest Hospital:</b> ${data.nearestHospital ? data.nearestHospital.name : "Locating..."}</p>
+            <p><b>GPS:</b> ${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}</p>
+            <button class="btn-navigate" id="btn-accept-${data.id}" style="background-color: #28a745;" onclick="acceptDispatch(${data.id})">✅ Accept & Route</button>
+            <button class="btn-navigate" onclick="focusOnIncident(${data.latitude}, ${data.longitude})">📍 Focus on Map</button>
+        `;
         incidentList.prepend(li);
         map.setView([data.latitude, data.longitude], 15);
       });
+
+      // Driver accepts a specific incident
+      function acceptDispatch(incidentId) {
+        socket.emit("accept-incident", {
+          incidentId: incidentId,
+          driverId: socket.id,
+        });
+
+        const btn = document.getElementById(`btn-accept-${incidentId}`);
+        if (btn) {
+          btn.textContent = "🔒 Assigned to You";
+          btn.style.backgroundColor = "#6c757d";
+          btn.disabled = true;
+        }
+        alert(
+          `You have accepted Dispatch #${incidentId}. Other reports remain available for other drivers.`,
+        );
+      }
+
+      // Sync across all driver views when an incident is claimed
+      socket.on("incident-accepted", (data) => {
+        const card = document.getElementById(
+          `incident-card-${data.incidentId}`,
+        );
+        if (card) {
+          const btn = card.querySelector(`#btn-accept-${data.incidentId}`);
+          if (btn && !btn.disabled) {
+            btn.textContent = "⚠️ Claimed by Another Unit";
+            btn.style.backgroundColor = "#ffc107";
+            btn.style.color = "#000";
+            btn.disabled = true;
+          }
+        }
+      });
+
+      function focusOnIncident(lat, lon) {
+        map.setView([lat, lon], 17);
+      }
     </script>
   </body>
 </html>

@@ -42,9 +42,9 @@ app.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
     try {
         const query = `
-            INSERT INTO users (username, email, password)
-            VALUES ($1, $2, $3)
-            RETURNING id, username, email;
+            INSERT INTO users (username, email, password, wallet_balance)
+            VALUES ($1, $2, $3, 0.00)
+            RETURNING id, username, email, wallet_balance;
         `;
         const values = [username || email.split('@')[0], email, password];
         const result = await pool.query(query, values);
@@ -79,8 +79,15 @@ app.post('/login', async (req, res) => {
     }
 });
 
-app.get('/patient', ensureAuthenticated, (req, res) => {
-    res.render('patient', { user: req.session.user });
+app.get('/patient', ensureAuthenticated, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, username, email, wallet_balance FROM users WHERE id = $1', [req.session.user.id]);
+        const currentUser = result.rows[0] || req.session.user;
+        res.render('patient', { user: currentUser });
+    } catch (err) {
+        console.error('Error fetching wallet balance:', err.message);
+        res.render('patient', { user: req.session.user });
+    }
 });
 
 app.get('/consultation', ensureAuthenticated, (req, res) => {
@@ -106,12 +113,43 @@ app.post('/api/book-appointment', ensureAuthenticated, async (req, res) => {
     }
 });
 
+// Handle adding funds to the wallet
+app.post('/api/wallet/topup', ensureAuthenticated, async (req, res) => {
+    const { amount } = req.body;
+    const userId = req.session.user.id;
+
+    if (!amount || isNaN(amount) || amount <= 0) {
+        return res.status(400).json({ success: false, error: 'Invalid top-up amount.' });
+    }
+
+    try {
+        const query = `
+            UPDATE users 
+            SET wallet_balance = COALESCE(wallet_balance, 0) + $1 
+            WHERE id = $2 
+            RETURNING wallet_balance;
+        `;
+        const result = await pool.query(query, [amount, userId]);
+        
+        req.session.user.wallet_balance = result.rows[0].wallet_balance;
+
+        res.status(200).json({ 
+            success: true, 
+            newBalance: result.rows[0].wallet_balance 
+        });
+    } catch (err) {
+        console.error('Wallet top-up error:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to update wallet balance.' });
+    }
+});
+
 // --- Socket.io Real-time Logic ---
 const activeVehicles = {};
 
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
+    // 1. Emergency Requests & Nearest Hospital Matching
     socket.on('emergency-request', async function (data = {}) {
         try {
             const { description, latitude, longitude } = data;
@@ -144,7 +182,6 @@ io.on('connection', (socket) => {
             const hospitalResult = await pool.query(hospitalQuery, [latitude, longitude]);
             const nearestHospital = hospitalResult.rows[0] || null;
 
-            // Broadcasts the new incident and nearest hospital to all connected clients (drivers and patients)
             io.emit('new-incident', {
                 ...newIncident,
                 nearestHospital
@@ -154,6 +191,35 @@ io.on('connection', (socket) => {
         }
     });
 
+    // 2. Handle Driver Accepting an Incident
+    socket.on('accept-incident', async (data) => {
+        const { incidentId, driverId } = data;
+        try {
+            const query = `
+                UPDATE incidents 
+                SET status = 'assigned' 
+                WHERE id = $1 
+                RETURNING *;
+            `;
+            const result = await pool.query(query, [incidentId]);
+            
+            if (result.rows.length > 0) {
+                const updatedIncident = result.rows[0];
+                
+                // Broadcast to all drivers that this report is now claimed
+                io.emit('incident-accepted', {
+                    incidentId: updatedIncident.id,
+                    driverId: driverId || socket.id
+                });
+                
+                console.log(`Incident #${incidentId} assigned to driver.`);
+            }
+        } catch (err) {
+            console.error('Error accepting incident:', err.message);
+        }
+    });
+
+    // 3. Location Tracking & Logging
     socket.on('send-location', async (data = {}) => {
         const { vehicleId, latitude, longitude } = data;
         activeVehicles[socket.id] = { latitude, longitude };
@@ -182,24 +248,6 @@ io.on('connection', (socket) => {
             timestamp: new Date().toLocaleTimeString(),
             status: data.status
         });
-    });
-
-    socket.on('join-room', (data) => {
-        const roomName = data && data.room ? data.room : 'emergency-consultation';
-        socket.join(roomName);
-        socket.to(roomName).emit('user-joined', socket.id);
-    });
-
-    socket.on('offer', (data) => {
-        if (data && data.room && data.offer) socket.to(data.room).emit('offer', data.offer);
-    });
-
-    socket.on('answer', (data) => {
-        if (data && data.room && data.answer) socket.to(data.room).emit('answer', data.answer);
-    });
-
-    socket.on('ice-candidate', (data) => {
-        if (data && data.room && data.candidate) socket.to(data.room).emit('ice-candidate', data.candidate);
     });
 
     socket.on('disconnect', () => {

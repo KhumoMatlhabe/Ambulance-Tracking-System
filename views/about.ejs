@@ -2,32 +2,277 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Ambulance Tracking System - About</title>
-    <link rel="stylesheet" href="/css/style.css"> <!-- optional -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMS Command & Dispatch | Enterprise Emergency Response</title>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --border-color: #334155;
+            --accent-blue: #0ea5e9; /* Balanced medium-light blue */
+            --accent-blue-hover: #0284c7;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Commercial Navigation Bar */
+        navbar {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .nav-brand {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .nav-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .menu-btn {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .menu-btn:hover {
+            background-color: var(--accent-blue-hover);
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: var(--bg-card);
+            min-width: 220px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 1001;
+            margin-top: 8px;
+        }
+        .dropdown-content.show {
+            display: block;
+        }
+        .dropdown-content a {
+            color: var(--text-primary);
+            padding: 12px 18px;
+            text-decoration: none;
+            display: block;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.15s;
+        }
+        .dropdown-content a:last-child {
+            border-bottom: none;
+        }
+        .dropdown-content a:hover {
+            background-color: #334155;
+            color: var(--accent-blue);
+        }
+
+        /* Hero Section */
+        .hero-container {
+            max-width: 1100px;
+            margin: 80px auto 50px auto;
+            padding: 0 20px;
+            text-align: center;
+        }
+        .hero-badge {
+            display: inline-block;
+            background: rgba(14, 165, 233, 0.15);
+            color: var(--accent-blue);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(14, 165, 233, 0.3);
+        }
+        .hero-container h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+        .hero-container p {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin: 0 auto 40px auto;
+        }
+
+        /* Capabilities Grid */
+        .capabilities-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            max-width: 1100px;
+            margin: 0 auto 80px auto;
+            padding: 0 20px;
+        }
+        @media (min-width: 768px) {
+            .capabilities-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        .capability-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: left;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .capability-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-blue);
+        }
+        .capability-icon {
+            font-size: 1.8rem;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+        .capability-card h3 {
+            font-size: 1.15rem;
+            color: #f1f5f9;
+            margin-bottom: 10px;
+        }
+        .capability-card p {
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Enterprise Footer */
+        footer {
+            background-color: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            padding: 24px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: auto;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>Ambulance Tracking & Emergency Dispatch System</h1>
-    </header>
-    
-    <main style="padding: 20px;">
-        <section>
-            <h2>Welcome to the Cape Town Emergency Response Platform</h2>
-            <p>Real-time ambulance dispatch, nearest hospital facility matching, and instant emergency medical consultations.</p>
-        </section>
 
-        <section style="margin-top: 30px;">
-            <!-- Protected Action Buttons -->
-            <a href="/patient"><button>Patient Portal (Request Ambulance)</button></a>
-            <a href="/driver"><button>Driver Dashboard</button></a>
-            <a href="/consultation"><button>Online Medical Consultation</button></a>
-            
-            <% if (!locals.user) { %>
-                <div style="margin-top: 15px;">
-                    <a href="/login">Log In</a> | <a href="/register">Register</a>
+    <!-- Commercial Navigation Bar -->
+    <navbar>
+        <div class="nav-brand">
+            <span>🚑</span> EMS COMMAND & DISPATCH SUITE
+        </div>
+        <div class="nav-menu">
+            <div class="nav-dropdown">
+                <button class="menu-btn" onclick="toggleMenu(event)">
+                    <span>Portal Navigation</span> ▾
+                </button>
+                <div id="dropdownMenu" class="dropdown-content">
+                    <a href="/patient">Patient Emergency Portal</a>
+                    <a href="/driver">Driver Command Dashboard</a>
+                    <a href="/consultation">Online Medical Consultation</a>
+                    <% if (!locals.user) { %>
+                        <a href="/login" style="color: var(--accent-blue); font-weight: 600;">Sign In / Secure Login</a>
+                        <a href="/register" style="color: #4ade80; font-weight: 600;">Patient Registration</a>
+                    <% } %>
                 </div>
-            <% } %>
-        </section>
-    </main>
+            </div>
+        </div>
+    </navbar>
+
+    <!-- Hero Section -->
+    <div class="hero-container">
+        <div class="hero-badge">Enterprise Emergency Response Platform</div>
+        <h1>Next-Generation Medical Dispatch & Telemetry Coordination</h1>
+        <p>
+            Eliminating response latency in urban healthcare networks. Our centralized dispatch suite bridges critical 
+            pre-hospital care with intelligent nearest-facility routing and real-time multi-unit tracking.
+        </p>
+    </div>
+
+    <!-- Core Dispatch Capabilities Grid -->
+    <div class="capabilities-grid">
+        <div class="capability-card">
+            <div class="capability-icon">📍</div>
+            <h3>Real-Time GPS Telemetry</h3>
+            <p>Instantly captures precise emergency coordinates from callers and streams live vehicle movement metrics across live interactive mapping interfaces.</p>
+        </div>
+        <div class="capability-card">
+            <div class="capability-icon">🏥</div>
+            <h3>Automated Facility Matching</h3>
+            <p>Instantly evaluates spatial distances and hospital departments to route critical patients to the closest available medical center without manual delays.</p>
+        </div>
+        <div class="capability-card">
+            <div class="capability-icon">⚡</div>
+            <h3>Multi-Unit Dispatch & Sync</h3>
+            <p>Empowers response units to securely review, claim, and coordinate incident dispatches in real-time, preventing duplicate deployment friction.</p>
+        </div>
+    </div>
+
+    <!-- Enterprise Footer -->
+    <footer>
+        Ambulance Tracking & Incident Reporting System &copy; 2026 | Enterprise Emergency Services Operations
+    </footer>
+
+    <!-- JavaScript to handle click toggle and outside clicks -->
+    <script>
+        function toggleMenu(event) {
+            event.stopPropagation();
+            const menu = document.getElementById("dropdownMenu");
+            menu.classList.toggle("show");
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.matches('.menu-btn') && !event.target.matches('.menu-btn *')) {
+                const menu = document.getElementById("dropdownMenu");
+                if (menu && menu.classList.contains('show')) {
+                    menu.classList.remove('show');
+                }
+            }
+        }
+    </script>
 </body>
 </html>

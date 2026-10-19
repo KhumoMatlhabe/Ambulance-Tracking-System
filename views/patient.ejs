@@ -39,6 +39,16 @@
     <div id="appointmentResult" class="success-msg"></div>
 </div>
 
+<div class="wallet-card">
+    <h3>My Emergency Wallet</h3>
+    <p>Current Balance: <strong>R <span id="balance-display"><%= user.wallet_balance || '0.00' %></span></strong></p>
+    
+    <div class="topup-form">
+        <input type="number" id="topup-amount" placeholder="Amount (e.g. 150)" min="1" step="0.01">
+        <button onclick="topUpWallet()">Add Funds</button>
+    </div>
+</div>
+
 <!-- Socket.io Script Integration -->
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -120,7 +130,7 @@
             });
             const result = await res.json();
             if (result.success) {
-                document.getElementById("appointmentResultinnerText").innerText = "Appointment booked successfully!";
+                document.getElementById("appointmentResult").innerText = "Appointment booked successfully!";
             } else {
                 document.getElementById("appointmentResult").innerText = "Booking failed.";
             }
@@ -129,35 +139,25 @@
             document.getElementById("appointmentResult").innerText = "Error submitting appointment.";
         }
     });
-</script>
-<div class="wallet-card">
-    <h3>My Emergency Wallet</h3>
-    <p>Current Balance: <strong>R <span id="balance-display"><%= user.wallet_balance || '0.00' %></span></strong></p>
-    
-    <div class="topup-form">
-        <input type="number" id="topup-amount" placeholder="Amount (e.g. 150)" min="1" step="0.01">
-        <button onclick="topUpWallet()">Add Funds</button>
-    </div>
-</div>
 
-<script>
-async function topUpWallet() {
-    const amount = document.getElementById('topup-amount').value;
-    
-    const response = await fetch('/api/wallet/topup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(amount) })
-    });
-    
-    const data = await response.json();
-    if (data.success) {
-        document.getElementById('balance-display').innerText = Number(data.newBalance).toFixed(2);
-        alert('Funds successfully added to your profile!');
-    } else {
-        alert('Error: ' + data.error);
+    // Wallet top-up handler
+    async function topUpWallet() {
+        const amount = document.getElementById('topup-amount').value;
+        
+        const response = await fetch('/api/wallet/topup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: parseFloat(amount) })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('balance-display').innerText = Number(data.newBalance).toFixed(2);
+            alert('Funds successfully added to your profile!');
+        } else {
+            alert('Error: ' + data.error);
+        }
     }
-}
 </script>
 
 <%- include('partials/footer') %>

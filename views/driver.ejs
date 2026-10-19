@@ -237,6 +237,13 @@
         if (noIncidentsMsg) {
           noIncidentsMsg.remove();
         }
+        //this part plays a sound when a new incident is received, but it may be blocked by the browser if the user hasn't interacted with the page yet
+        try {
+          const audio = new Audio(
+            "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
+          );
+          audio.play().catch((e) => console.log("Audio autoplay prevented"));
+        } catch (err) {}
 
         const incidentIcon = L.divIcon({
           className: "custom-incident-marker",
@@ -261,11 +268,8 @@
                 <button class="btn-navigate" onclick="focusOnIncident(${data.latitude}, ${data.longitude})">📍 Focus on Map</button>
             `;
         incidentList.prepend(li);
+        map.setView([data.latitude, data.longitude], 15);
       });
-
-      function focusOnIncident(lat, lon) {
-        map.setView([lat, lon], 17);
-      }
     </script>
   </body>
 </html>

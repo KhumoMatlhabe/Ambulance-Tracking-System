@@ -1,13 +1,12 @@
+// server.js
 const express = require('express');
 const http = require('http');
 const socketio = require('socket.io');
 const session = require('express-session');
 const path = require('path');
-//const pool = require(Ambulance-Tracking-System /db);
-const b = require('./db'); // Assuming this is a database utility module
+const pool = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 3002;
 const server = http.createServer(app);
 const io = socketio(server);
 
@@ -31,7 +30,7 @@ function ensureAuthenticated(req, res, next) {
     return res.redirect('/login');
 }
 
-// --- Express Routes ---
+// --- Express Views & Authentication Routes ---
 app.get('/', (req, res) => res.render('about'));
 app.get('/driver', (req, res) => res.render('driver'));
 
@@ -76,7 +75,7 @@ app.post('/login', async (req, res) => {
         return res.redirect('/patient');
     } catch (err) {
         console.error('Login error:', err.message);
-        res.status(500).render('login', { error: 'An error occurred.' });
+        res.status(500).render('login', { error: 'An error occurred during login.' });
     }
 });
 
@@ -84,7 +83,6 @@ app.get('/patient', ensureAuthenticated, (req, res) => {
     res.render('patient', { user: req.session.user });
 });
 
-// Consultation Page Route
 app.get('/consultation', ensureAuthenticated, (req, res) => {
     res.render('consultation', { user: req.session.user });
 });
@@ -114,23 +112,48 @@ const activeVehicles = {};
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
-    // 1. Emergency Requests & Hospital Matching
     socket.on('emergency-request', async function (data = {}) {
         try {
-            const query = `
+            const { description, latitude, longitude } = data;
+
+            const incidentQuery = `
                 INSERT INTO incidents (description, latitude, longitude, status)
                 VALUES ($1, $2, $3, 'open')
                 RETURNING *;
             `;
-            const values = [data.description || 'Medical Emergency', data.latitude, data.longitude];
-            const result = await pool.query(query, values);
-            io.emit('new-incident', result.rows[0]);
+            const incidentResult = await pool.query(incidentQuery, [
+                description || 'Medical Emergency',
+                latitude,
+                longitude
+            ]);
+            const newIncident = incidentResult.rows[0];
+
+            const hospitalQuery = `
+                SELECT name, latitude, longitude,
+                (
+                    6371 * acos(
+                        cos(radians($1)) * cos(radians(latitude)) *
+                        cos(radians(longitude) - radians($2)) +
+                        sin(radians($1)) * sin(radians(latitude))
+                    )
+                ) AS distance_km
+                FROM hospitals
+                ORDER BY distance_km ASC
+                LIMIT 1;
+            `;
+            const hospitalResult = await pool.query(hospitalQuery, [latitude, longitude]);
+            const nearestHospital = hospitalResult.rows[0] || null;
+
+            // Broadcasts the new incident and nearest hospital to all connected clients (drivers and patients)
+            io.emit('new-incident', {
+                ...newIncident,
+                nearestHospital
+            });
         } catch (err) {
             console.error('Error handling emergency request:', err.message);
         }
     });
 
-    // 2. Location Tracking & Logging
     socket.on('send-location', async (data = {}) => {
         const { vehicleId, latitude, longitude } = data;
         activeVehicles[socket.id] = { latitude, longitude };
@@ -148,13 +171,11 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. Ambulance Status Updates
     socket.on('ambulance-status-update', (data) => {
         let alertMessage = `Ambulance ${data.ambulanceId} status: ${data.status}`;
         if (data.sirenActive) {
             alertMessage = `🚨 EMERGENCY: Ambulance ${data.ambulanceId} has ACTIVATED SIRENS!`;
         }
-
         io.emit('broadcast-alert', {
             ambulanceId: data.ambulanceId,
             message: alertMessage,
@@ -163,98 +184,32 @@ io.on('connection', (socket) => {
         });
     });
 
-    // 4. WebRTC Signaling for Video Consultation (Properly Nested)
     socket.on('join-room', (data) => {
         const roomName = data && data.room ? data.room : 'emergency-consultation';
         socket.join(roomName);
-        console.log(`User ${socket.id} joined video room: ${roomName}`);
         socket.to(roomName).emit('user-joined', socket.id);
     });
 
     socket.on('offer', (data) => {
-        if (data && data.room) {
-            socket.to(data.room).emit('offer', data.offer);
-        }
+        if (data && data.room && data.offer) socket.to(data.room).emit('offer', data.offer);
     });
 
     socket.on('answer', (data) => {
-        if (data && data.room) {
-            socket.to(data.room).emit('answer', data.answer);
-        }
+        if (data && data.room && data.answer) socket.to(data.room).emit('answer', data.answer);
     });
 
     socket.on('ice-candidate', (data) => {
-        if (data && data.room) {
-            socket.to(data.room).emit('ice-candidate', data.candidate);
-        }
+        if (data && data.room && data.candidate) socket.to(data.room).emit('ice-candidate', data.candidate);
     });
 
-    // 5. Disconnect Handling
     socket.on('disconnect', () => {
         delete activeVehicles[socket.id];
         io.emit('user-disconnected', socket.id);
-        console.log(`User disconnected: ${socket.id}`);
     });
 });
 
-//6 Adding a  wallet upon request of amabulance driver  
-// View user wallet balance on patient profile
-app.get('/patient', ensureAuthenticated, async (req, res) => {
-    try {
-        const result = await pool.query('SELECT username, email, wallet_balance FROM users WHERE id = $1', [req.session.user.id]);
-        const currentUser = result.rows[0];
-        res.render('patient', { user: currentUser });
-    } catch (err) {
-        console.error('Error fetching wallet balance:', err.message);
-        res.render('patient', { user: req.session.user });
-    }
-});
-
-// Handle adding funds to the wallet
-app.post('/api/wallet/topup', ensureAuthenticated, async (req, res) => {
-    const { amount } = req.body;
-    const userId = req.session.user.id;
-
-    if (!amount || isNaN(amount) || amount <= 0) {
-        return res.status(400).json({ success: false, error: 'Invalid top-up amount.' });
-    }
-
-    try {
-        const query = `
-            UPDATE users 
-            SET wallet_balance = wallet_balance + $1 
-            WHERE id = $2 
-            RETURNING wallet_balance;
-        `;
-        const result = await pool.query(query, [amount, userId]);
-        
-        // Update session balance as well
-        req.session.user.wallet_balance = result.rows[0].wallet_balance;
-
-        res.status(200).json({ 
-            success: true, 
-            newBalance: result.rows[0].wallet_balance 
-        });
-    } catch (err) {
-        console.error('Wallet top-up error:', err.message);
-        res.status(500).json({ success: false, error: 'Failed to update wallet balance.' });
-    }
-});
-
-
-
-server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        console.warn(`⚠️ Port ${PORT} is busy. Automatically switching to port ${PORT + 1}...\n`);
-        server.listen(PORT + 1, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT + 1}`);
-        });
-    } else {
-        console.error('Server error:', err);
-    }
-});
-
 // --- Start Server ---
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

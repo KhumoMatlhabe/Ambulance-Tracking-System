@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Authentication | Ambulance Tracking System</title>
+    <title>Patient Registration | Ambulance Tracking System</title>
     <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
@@ -13,7 +13,7 @@
         <span class="status-indicator"></span>
         <span>EMS Command Portal</span>
       </div>
-      <div class="system-status">Access Control</div>
+      <div class="system-status">Patient Registration</div>
     </header>
 
     <!-- Main Authentication Card -->
@@ -25,11 +25,15 @@
         <h1
           style="font-size: 1.75rem; text-align: center; margin-bottom: 0.5rem"
         >
-          System Authentication
+          Create Account
         </h1>
         <p style="text-align: center; font-size: 0.875rem; margin-bottom: 2rem">
-          Please sign in or register to access dispatch and patient services.
+          Register to access emergency dispatch and patient services.
         </p>
+
+        <% if (locals.error && error) { %>
+            <div style="color: #dc3545; margin-bottom: 15px; font-size: 14px; text-align: center;"><%= error %></div>
+        <% } %>
 
         <form
           action="/register"
@@ -37,74 +41,50 @@
           style="display: flex; flex-direction: column; gap: 1.25rem"
         >
           <div>
-            <label
-              style="
-                display: block;
-                font-size: 0.875rem;
-                font-weight: 500;
-                margin-bottom: 0.5rem;
-                color: #cbd5e1;
-              "
-              >Email Address / Username</label
-            >
+            <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: #cbd5e1;">Username</label>
             <input
               type="text"
               name="username"
               required
               placeholder="Enter your username"
-              style="
-                width: 100%;
-                padding: 0.75rem;
-                border-radius: 0.5rem;
-                border: 1px solid #334155;
-                background-color: #0f172a;
-                color: #f8fafc;
-                font-size: 0.95rem;
-              "
+              style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background-color: #0f172a; color: #f8fafc; font-size: 0.95rem;"
             />
           </div>
 
           <div>
-            <label
-              style="
-                display: block;
-                font-size: 0.875rem;
-                font-weight: 500;
-                margin-bottom: 0.5rem;
-                color: #cbd5e1;
-              "
-              >Password</label
-            >
+            <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: #cbd5e1;">Email Address</label>
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder="Enter your email"
+              style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background-color: #0f172a; color: #f8fafc; font-size: 0.95rem;"
+            />
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: #cbd5e1;">Password</label>
             <input
               type="password"
               name="password"
               required
               placeholder="Enter your password"
-              style="
-                width: 100%;
-                padding: 0.75rem;
-                border-radius: 0.5rem;
-                border: 1px solid #334155;
-                background-color: #0f172a;
-                color: #f8fafc;
-                font-size: 0.95rem;
-              "
+              style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background-color: #0f172a; color: #f8fafc; font-size: 0.95rem;"
             />
           </div>
 
           <button
             type="submit"
             class="btn btn-patient"
-            style="
-              width: 100%;
-              margin-top: 0.5rem;
-              cursor: pointer;
-              border: none;
-            "
+            style="width: 100%; margin-top: 0.5rem; cursor: pointer; border: none; padding: 0.75rem; font-weight: bold;"
           >
-            Proceed to Portal
+            Register & Proceed
           </button>
         </form>
+
+        <div style="margin-top: 15px; text-align: center; font-size: 14px;">
+            Already have an account? <a href="/login" style="color: #3b82f6; text-decoration: none;">Log in here</a>
+        </div>
       </div>
     </main>
 

@@ -7,6 +7,7 @@ const path = require('path');
 const b = require('./db'); // Assuming this is a database utility module
 
 const app = express();
+const PORT = process.env.PORT || 3002;
 const server = http.createServer(app);
 const io = socketio(server);
 
@@ -240,8 +241,20 @@ app.post('/api/wallet/topup', ensureAuthenticated, async (req, res) => {
     }
 });
 
+
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.warn(`⚠️ Port ${PORT} is busy. Automatically switching to port ${PORT + 1}...\n`);
+        server.listen(PORT + 1, () => {
+            console.log(`🚀 Server running on http://localhost:${PORT + 1}`);
+        });
+    } else {
+        console.error('Server error:', err);
+    }
+});
+
 // --- Start Server ---
-const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

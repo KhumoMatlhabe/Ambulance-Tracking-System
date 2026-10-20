@@ -175,6 +175,82 @@
                 <% } %>
             </tbody>
         </table>
+
+        <!-- Fleet & Driver Status Control Section -->
+        <div class="section-header" style="margin-top: 40px;">
+            <h2>🚑 Live Fleet & Driver Status Control</h2>
+            <button class="btn-primary" onclick="loadFleetDrivers()">🔄 Refresh Fleet Status</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Driver ID</th>
+                    <th>Username / Unit</th>
+                    <th>Email Address</th>
+                    <th>Current Status</th>
+                    <th>Admin Override Action</th>
+                </tr>
+            </thead>
+            <tbody id="fleetTableBody">
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 20px;">Loading live fleet data...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Open Incidents & Ambulance Dispatch Section -->
+        <div class="section-header" style="margin-top: 40px;">
+            <h2>🚨 Open Incidents & Ambulance Dispatch</h2>
+            <button class="btn-primary" onclick="loadOpenIncidents()">🔄 Refresh Incidents</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Incident ID</th>
+                    <th>Description</th>
+                    <th>Coordinates</th>
+                    <th>Status</th>
+                    <th>Assign Driver / Ambulance</th>
+                </tr>
+            </thead>
+            <tbody id="dispatchTableBody">
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 20px;">Loading open incidents...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Municipal Incident Audit Trail & Compliance Log with Filters -->
+        <div class="section-header" style="margin-top: 40px;">
+            <h2>📊 Municipal Incident Audit Trail & Compliance Log</h2>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-secondary" onclick="filterAuditTable('all')" style="padding: 6px 12px; font-size: 0.8rem; background: var(--accent-blue);">All</button>
+                <button class="btn-secondary" onclick="filterAuditTable('open')" style="padding: 6px 12px; font-size: 0.8rem;">Open</button>
+                <button class="btn-secondary" onclick="filterAuditTable('assigned')" style="padding: 6px 12px; font-size: 0.8rem;">Assigned</button>
+                <button class="btn-secondary" onclick="filterAuditTable('completed')" style="padding: 6px 12px; font-size: 0.8rem;">Completed</button>
+                <button class="btn-primary" onclick="loadAuditTrail()" style="padding: 6px 12px; font-size: 0.8rem;">🔄 Refresh</button>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Claimed By</th>
+                    <th>Reported Time</th>
+                    <th>Completed Time</th>
+                </tr>
+            </thead>
+            <tbody id="auditTableBody">
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 20px;">Loading audit compliance log...</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
     <!-- Add Staff Modal -->
@@ -236,6 +312,208 @@
                 alert('Server connection error.');
             }
         }
+
+        // Live Fleet Drivers Loading and Status Override
+        async function loadFleetDrivers() {
+            try {
+                const res = await fetch('/api/admin/drivers');
+                const data = await res.json();
+                const tbody = document.getElementById('fleetTableBody');
+                tbody.innerHTML = '';
+
+                if (!data.success || data.drivers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 20px;">No drivers found in the system.</td></tr>';
+                    return;
+                }
+
+                data.drivers.forEach(driver => {
+                    const row = document.createElement('tr');
+                    let statusColor = '#22c55e'; // Green for Online
+                    if (driver.availability_status === 'On-Shift') statusColor = '#eab308'; // Yellow
+                    if (driver.availability_status === 'Busy / Emergency') statusColor = '#e11d48'; // Red
+                    if (driver.availability_status === 'Offline') statusColor = '#64748b'; // Gray
+
+                    row.innerHTML = `
+                        <td>#${driver.id}</td>
+                        <td><strong>${driver.username}</strong></td>
+                        <td>${driver.email}</td>
+                        <td><span style="padding: 4px 10px; border-radius: 4px; background: ${statusColor}22; color: ${statusColor}; font-weight: 600;">● ${driver.availability_status || 'Online'}</span></td>
+                        <td>
+                            <select onchange="updateDriverStatus(${driver.id}, this.value)" style="padding: 6px; background: var(--bg-main); border: 1px solid var(--border-color); color: white; border-radius: 4px;">
+                                <option value="" disabled selected>Change Status...</option>
+                                <option value="Online">Set Online</option>
+                                <option value="On-Shift">Set On-Shift</option>
+                                <option value="Busy / Emergency">Set Busy / Emergency</option>
+                                <option value="Offline">Force Offline</option>
+                            </select>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                console.error('Failed to load fleet drivers:', err);
+            }
+        }
+
+        async function updateDriverStatus(driverId, newStatus) {
+            try {
+                const res = await fetch('/api/admin/driver/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ driverId, status: newStatus })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`Driver #${driverId} status successfully updated to: ${newStatus}`);
+                    loadFleetDrivers();
+                } else {
+                    alert('Error updating status: ' + data.error);
+                }
+            } catch (err) {
+                console.error('Server error updating driver status:', err);
+                alert('Server connection error.');
+            }
+        }
+
+        // Open Incidents & Dispatch Management
+        async function loadOpenIncidents() {
+            try {
+                const [incidentsRes, driversRes] = await Promise.all([
+                    fetch('/api/incidents/history'),
+                    fetch('/api/admin/drivers')
+                ]);
+                
+                const incData = await incidentsRes.json();
+                const driverData = await driversRes.json();
+                
+                const tbody = document.getElementById('dispatchTableBody');
+                tbody.innerHTML = '';
+
+                if (!incData.success || incData.incidents.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 20px;">No incidents recorded.</td></tr>';
+                    return;
+                }
+
+                incData.incidents.forEach(incident => {
+                    const row = document.createElement('tr');
+                    
+                    let driverOptions = '<option value="" disabled selected>Select Driver/Unit...</option>';
+                    if (driverData.success && driverData.drivers) {
+                        driverData.drivers.forEach(driver => {
+                            driverOptions += `<option value="${driver.id}">${driver.username} (${driver.availability_status || 'Online'})</option>`;
+                        });
+                    }
+
+                    row.innerHTML = `
+                        <td>#${incident.id}</td>
+                        <td><strong>${incident.description}</strong></td>
+                        <td>${incident.latitude}, ${incident.longitude}</td>
+                        <td><span style="padding: 4px 8px; border-radius: 4px; background: ${incident.status === 'open' ? '#e11d4822' : '#eab30822'}; color: ${incident.status === 'open' ? '#e11d48' : '#eab308'}; font-weight: 600;">${incident.status}</span></td>
+                        <td>
+                            <div style="display: flex; gap: 8px;">
+                                <select id="driverSelect-${incident.id}" style="padding: 6px; background: var(--bg-main); border: 1px solid var(--border-color); color: white; border-radius: 4px;">
+                                    ${driverOptions}
+                                </select>
+                                <button class="btn-primary" onclick="assignAmbulance(${incident.id})" style="padding: 6px 12px; font-size: 0.8rem;">Dispatch</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                console.error('Failed to load dispatch queue:', err);
+            }
+        }
+
+        async function assignAmbulance(incidentId) {
+            const selectElement = document.getElementById(`driverSelect-${incidentId}`);
+            const driverId = selectElement.value;
+
+            if (!driverId) {
+                alert('Please select an ambulance driver to dispatch.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/assign-incident', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ incidentId, driverId })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(`Ambulance successfully dispatched to Incident #${incidentId}!`);
+                    loadOpenIncidents();
+                    loadAuditTrail();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                console.error('Dispatch error:', err);
+                alert('Server connection error.');
+            }
+        }
+
+        // Municipal Audit Trail & Compliance Log Logic with Filters
+        let allAuditIncidents = [];
+
+        async function loadAuditTrail() {
+            try {
+                const res = await fetch('/api/incidents/history');
+                const data = await res.json();
+                
+                if (data.success) {
+                    allAuditIncidents = data.incidents;
+                    renderAuditTable(allAuditIncidents);
+                }
+            } catch (err) {
+                console.error('Failed to load audit history:', err);
+            }
+        }
+
+        function renderAuditTable(incidents) {
+            const tbody = document.getElementById('auditTableBody');
+            tbody.innerHTML = '';
+
+            if (incidents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 20px;">No incident logs match this filter.</td></tr>';
+                return;
+            }
+
+            incidents.forEach(inc => {
+                const row = document.createElement('tr');
+                let badgeColor = '#e11d48'; // Red for open
+                if (inc.status === 'assigned') badgeColor = '#eab308'; // Yellow for assigned
+                if (inc.status === 'completed') badgeColor = '#22c55e'; // Green for completed
+
+                row.innerHTML = `
+                    <td>#${inc.id}</td>
+                    <td><strong>${inc.description}</strong></td>
+                    <td><span style="padding: 4px 8px; border-radius: 4px; background: ${badgeColor}22; color: ${badgeColor}; font-weight: 600;">${inc.status}</span></td>
+                    <td>${inc.claimed_by ? 'Unit #' + inc.claimed_by : '<span style="color: var(--text-secondary);">Unassigned</span>'}</td>
+                    <td>${new Date(inc.created_at).toLocaleTimeString()}</td>
+                    <td>${inc.completed_at ? new Date(inc.completed_at).toLocaleTimeString() : '<span style="color: var(--text-secondary);">Pending</span>'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterAuditTable(status) {
+            if (status === 'all') {
+                renderAuditTable(allAuditIncidents);
+            } else {
+                const filtered = allAuditIncidents.filter(inc => inc.status === status);
+                renderAuditTable(filtered);
+            }
+        }
+
+        // Load tables automatically on startup
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFleetDrivers();
+            loadOpenIncidents();
+            loadAuditTrail();
+        });
     </script>
 </body>
 </html>

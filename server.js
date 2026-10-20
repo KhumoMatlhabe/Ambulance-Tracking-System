@@ -38,34 +38,30 @@ function ensureAdmin(req, res, next) {
     return res.redirect('/admin-login');
 }
 
-// --- Express Views & Authentication Routes ---
+// --- Public Views ---
 app.get('/', (req, res) => res.render('about'));
 
-app.get('/register', (req, res) => {
-    res.render('register', { error: null });
-});
+// --- Patient Authentication & Portal Routes ---
+app.get('/register', (req, res) => res.render('register', { error: null }));
 
 app.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
     try {
         const query = `
-            INSERT INTO users (username, email, password, wallet_balance, role)
-            VALUES ($1, $2, $3, 0.00, 'patient')
-            RETURNING id, username, email, wallet_balance, role;
+            INSERT INTO patients (username, email, password, wallet_balance)
+            VALUES ($1, $2, $3, 0.00)
+            RETURNING id, username, email, wallet_balance;
         `;
-        const values = [username || email.split('@')[0], email, password];
-        const result = await pool.query(query, values);
-        req.session.user = result.rows[0];
+        const result = await pool.query(query, [username || email.split('@')[0], email, password]);
+        req.session.user = { ...result.rows[0], userType: 'patient' };
         res.redirect('/patient');
     } catch (err) {
-        console.error('Registration error:', err.message);
+        console.error('Patient registration error:', err.message);
         res.status(400).render('register', { error: 'Registration failed. Email or username may already be in use.' });
     }
 });
 
-app.get('/login', (req, res) => {
-    res.render('login', { error: null });
-});
+app.get('/login', (req, res) => res.render('login', { error: null }));
 
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
@@ -73,23 +69,67 @@ app.post('/login', async (req, res) => {
         return res.render('login', { error: 'Please fill in all fields.' });
     }
     try {
-        const query = `SELECT * FROM users WHERE email = $1 AND password = $2`;
-        const result = await pool.query(query, [email, password]);
+        const result = await pool.query(`SELECT * FROM patients WHERE email = $1 AND password = $2`, [email, password]);
         if (result.rows.length === 0) {
-            return res.render('login', { error: 'Invalid email or password.' });
+            return res.render('login', { error: 'Invalid patient credentials.' });
         }
-        req.session.user = result.rows[0];
+        req.session.user = { ...result.rows[0], userType: 'patient' };
         return res.redirect('/patient');
     } catch (err) {
-        console.error('Login error:', err.message);
+        console.error('Patient login error:', err.message);
         res.status(500).render('login', { error: 'An error occurred during login.' });
     }
 });
 
-// Admin / Staff Registration & Login Routes (Tied directly to the staff table)
-app.get('/admin-register', (req, res) => {
-    res.render('admin-register', { error: null });
+app.get('/patient', ensureAuthenticated, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, username, email, wallet_balance FROM patients WHERE id = $1', [req.session.user.id]);
+        const currentUser = result.rows[0] || req.session.user;
+        res.render('patient', { user: currentUser });
+    } catch (err) {
+        console.error('Error fetching patient details:', err.message);
+        res.render('patient', { user: req.session.user });
+    }
 });
+
+app.get('/consultation', ensureAuthenticated, (req, res) => {
+    res.render('consultation', { user: req.session.user });
+});
+
+// --- Driver Authentication & Portal Routes ---
+app.get('/driver-login', (req, res) => res.render('driver-login', { error: null }));
+
+app.post('/driver-login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.render('driver-login', { error: 'Please fill in all fields.' });
+    }
+    try {
+        const result = await pool.query(`SELECT * FROM drivers WHERE email = $1 AND password = $2`, [email, password]);
+        if (result.rows.length === 0) {
+            return res.render('driver-login', { error: 'Invalid driver credentials.' });
+        }
+        req.session.user = { ...result.rows[0], userType: 'driver' };
+        return res.redirect('/driver');
+    } catch (err) {
+        console.error('Driver login error:', err.message);
+        res.status(500).render('driver-login', { error: 'An error occurred during login.' });
+    }
+});
+
+app.get('/driver', ensureAuthenticated, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, username, email, availability_status FROM drivers WHERE id = $1', [req.session.user.id]);
+        const currentDriver = result.rows[0] || req.session.user;
+        res.render('driver', { user: currentDriver });
+    } catch (err) {
+        console.error('Error fetching driver details:', err.message);
+        res.render('driver', { user: req.session.user });
+    }
+});
+
+// --- Admin / Staff Authentication & Dashboard Routes ---
+app.get('/admin-register', (req, res) => res.render('admin-register', { error: null }));
 
 app.post('/admin-register', async (req, res) => {
     const { name, email, password, role } = req.body;
@@ -100,7 +140,7 @@ app.post('/admin-register', async (req, res) => {
             RETURNING *;
         `;
         const result = await pool.query(query, [name, email, password, role || 'Administrator']);
-        req.session.user = result.rows[0];
+        req.session.user = { ...result.rows[0], userType: 'staff' };
         res.redirect('/admin');
     } catch (err) {
         console.error('Staff registration error:', err.message);
@@ -108,9 +148,7 @@ app.post('/admin-register', async (req, res) => {
     }
 });
 
-app.get('/admin-login', (req, res) => {
-    res.render('admin-login', { error: null });
-});
+app.get('/admin-login', (req, res) => res.render('admin-login', { error: null }));
 
 app.post('/admin-login', async (req, res) => {
     const { email, password } = req.body;
@@ -118,14 +156,11 @@ app.post('/admin-login', async (req, res) => {
         return res.render('admin-login', { error: 'Please fill in all fields.' });
     }
     try {
-        const query = `SELECT * FROM staff WHERE email = $1 AND password = $2`;
-        const result = await pool.query(query, [email, password]);
-        
+        const result = await pool.query(`SELECT * FROM staff WHERE email = $1 AND password = $2`, [email, password]);
         if (result.rows.length === 0) {
             return res.render('admin-login', { error: 'Invalid staff email or password.' });
         }
-        
-        req.session.user = result.rows[0];
+        req.session.user = { ...result.rows[0], userType: 'staff' };
         return res.redirect('/admin');
     } catch (err) {
         console.error('Staff login error:', err.message);
@@ -133,60 +168,6 @@ app.post('/admin-login', async (req, res) => {
     }
 });
 
-// Driver Login Routes
-app.get('/driver-login', (req, res) => {
-    res.render('driver-login', { error: null });
-});
-
-app.post('/driver-login', async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-        return res.render('driver-login', { error: 'Please fill in all fields.' });
-    }
-    try {
-        const query = `SELECT * FROM users WHERE email = $1 AND password = $2`;
-        const result = await pool.query(query, [email, password]);
-        
-        if (result.rows.length === 0) {
-            return res.render('driver-login', { error: 'Invalid driver email or password.' });
-        }
-        
-        req.session.user = result.rows[0];
-        return res.redirect('/driver');
-    } catch (err) {
-        console.error('Driver login error:', err.message);
-        res.status(500).render('driver-login', { error: 'An error occurred during login.' });
-    }
-});
-
-// Protected Dashboards & Views
-app.get('/driver', ensureAuthenticated, async (req, res) => {
-    try {
-        const result = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [req.session.user.id]);
-        const currentDriver = result.rows[0] || req.session.user;
-        res.render('driver', { user: currentDriver });
-    } catch (err) {
-        console.error('Error fetching driver details:', err.message);
-        res.render('driver', { user: req.session.user });
-    }
-});
-
-app.get('/patient', ensureAuthenticated, async (req, res) => {
-    try {
-        const result = await pool.query('SELECT id, username, email, wallet_balance FROM users WHERE id = $1', [req.session.user.id]);
-        const currentUser = result.rows[0] || req.session.user;
-        res.render('patient', { user: currentUser });
-    } catch (err) {
-        console.error('Error fetching wallet balance:', err.message);
-        res.render('patient', { user: req.session.user });
-    }
-});
-
-app.get('/consultation', ensureAuthenticated, (req, res) => {
-    res.render('consultation', { user: req.session.user });
-});
-
-// Protected Admin Dashboard Route
 app.get('/admin', ensureAdmin, async (req, res) => {
     try {
         const statsQuery = `
@@ -210,7 +191,9 @@ app.get('/admin', ensureAdmin, async (req, res) => {
     }
 });
 
-// API: Add a new staff member from the Admin Panel modal
+// --- API Endpoints ---
+
+// Add a new staff member from the Admin Panel modal
 app.post('/api/staff/add', ensureAdmin, async (req, res) => {
     const { name, email, role, password } = req.body;
     if (!name || !email || !role) {
@@ -249,7 +232,7 @@ app.post('/api/book-appointment', ensureAuthenticated, async (req, res) => {
     }
 });
 
-// Handle adding funds to the wallet
+// Handle adding funds to the wallet (Patients)
 app.post('/api/wallet/topup', ensureAuthenticated, async (req, res) => {
     const { amount } = req.body;
     const userId = req.session.user.id;
@@ -260,7 +243,7 @@ app.post('/api/wallet/topup', ensureAuthenticated, async (req, res) => {
 
     try {
         const query = `
-            UPDATE users 
+            UPDATE patients 
             SET wallet_balance = COALESCE(wallet_balance, 0) + $1 
             WHERE id = $2 
             RETURNING wallet_balance;
@@ -278,6 +261,84 @@ app.post('/api/wallet/topup', ensureAuthenticated, async (req, res) => {
         res.status(500).json({ success: false, error: 'Failed to update wallet balance.' });
     }
 });
+
+// Fetch all past and active incidents for the audit trail log
+app.get('/api/incidents/history', ensureAuthenticated, async (req, res) => {
+    try {
+        const query = `
+            SELECT id, description, latitude, longitude, status, claimed_by, created_at, completed_at
+            FROM incidents
+            ORDER BY created_at DESC;
+        `;
+        const result = await pool.query(query);
+        res.status(200).json({ success: true, incidents: result.rows });
+    } catch (err) {
+        console.error('Error fetching incident history:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to retrieve incident audit log.' });
+    }
+});
+
+// API: Fetch all drivers from the dedicated drivers table for fleet control
+app.get('/api/admin/drivers', ensureAdmin, async (req, res) => {
+    try {
+        const query = `SELECT id, username, email, COALESCE(availability_status, 'Online') AS availability_status FROM drivers ORDER BY id DESC;`;
+        const result = await pool.query(query);
+        res.status(200).json({ success: true, drivers: result.rows });
+    } catch (err) {
+        console.error('Error fetching drivers:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to retrieve fleet drivers.' });
+    }
+});
+
+// API: Admin override of driver availability status in the drivers table
+app.post('/api/admin/driver/status', ensureAdmin, async (req, res) => {
+    const { driverId, status } = req.body;
+    try {
+        const query = `UPDATE drivers SET availability_status = $1 WHERE id = $2 RETURNING id, username, availability_status;`;
+        const result = await pool.query(query, [status, driverId]);
+        res.status(200).json({ success: true, driver: result.rows[0] });
+    } catch (err) {
+        console.error('Error updating driver status:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to update status.' });
+    }
+});
+
+// API: Assign ambulance driver to an open incident
+app.post('/api/admin/assign-incident', ensureAdmin, async (req, res) => {
+    const { incidentId, driverId } = req.body;
+    
+    if (!incidentId || !driverId) {
+        return res.status(400).json({ success: false, error: 'Incident ID and Driver ID are required.' });
+    }
+
+    try {
+        const query = `
+            UPDATE incidents 
+            SET status = 'assigned', claimed_by = $1 
+            WHERE id = $2 
+            RETURNING *;
+        `;
+        const result = await pool.query(query, [driverId, incidentId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Incident not found.' });
+        }
+
+        const updatedIncident = result.rows[0];
+
+        io.emit('incident-assigned', {
+            incidentId: updatedIncident.id,
+            driverId: driverId,
+            status: updatedIncident.status
+        });
+
+        res.status(200).json({ success: true, incident: updatedIncident });
+    } catch (err) {
+        console.error('Error assigning ambulance:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to assign ambulance to incident.' });
+    }
+});
+
 
 // --- Socket.io Real-time Logic ---
 const activeVehicles = {};
@@ -333,11 +394,11 @@ io.on('connection', (socket) => {
         try {
             const query = `
                 UPDATE incidents 
-                SET status = 'assigned' 
-                WHERE id = $1 
+                SET status = 'assigned', claimed_by = $1 
+                WHERE id = $2 
                 RETURNING *;
             `;
-            const result = await pool.query(query, [incidentId]);
+            const result = await pool.query(query, [driverId, incidentId]);
             
             if (result.rows.length > 0) {
                 const updatedIncident = result.rows[0];
@@ -391,21 +452,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Fetch all past and active incidents for the audit trail log
-app.get('/api/incidents/history', ensureAuthenticated, async (req, res) => {
-    try {
-        const query = `
-            SELECT id, description, latitude, longitude, status, claimed_by, created_at, completed_at
-            FROM incidents
-            ORDER BY created_at DESC;
-        `;
-        const result = await pool.query(query);
-        res.status(200).json({ success: true, incidents: result.rows });
-    } catch (err) {
-        console.error('Error fetching incident history:', err.message);
-        res.status(500).json({ success: false, error: 'Failed to retrieve incident audit log.' });
-    }
-});
 
 // --- Start Server ---
 const PORT = process.env.PORT || 3000;

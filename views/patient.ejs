@@ -1,21 +1,20 @@
 <%- include('partials/header', { title: 'Patient Emergency Portal' }) %>
 
 <style>
-    .patient-dashboard {
-        max-width: 900px;
-        margin: 20px auto;
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 20px;
-        padding: 0 15px 40px 15px;
+    .patient-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        padding: 30px 15px;
+        box-sizing: border-box;
     }
-    @media (min-width: 768px) {
-        .patient-dashboard {
-            grid-template-columns: 1fr 1fr;
-        }
-        .card-full {
-            grid-column: span 2;
-        }
+    .patient-dashboard {
+        width: 100%;
+        max-width: 650px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
     }
     .portal-card {
         background: #ffffff;
@@ -121,56 +120,39 @@
     }
 </style>
 
-<div class="patient-dashboard">
-    <!-- Emergency Request Card -->
-    <div class="portal-card">
-        <h3>🚨 Request Emergency Assistance</h3>
-        <p style="color: #64748b; margin-bottom: 15px; font-size: 0.9rem;">
-            Instant ambulance dispatch using real-time GPS telemetry.
-        </p>
+<div class="patient-wrapper">
+    <div class="patient-dashboard">
+        <!-- Emergency Request Card -->
+        <div class="portal-card">
+            <h3>🚨 Request Emergency Assistance</h3>
+            <p style="color: #64748b; margin-bottom: 15px; font-size: 0.9rem;">
+                Instant ambulance dispatch using real-time GPS telemetry.
+            </p>
 
-        <div>
-            <label>Emergency Details / Symptoms:</label>
-            <textarea id="emergencyDescription" placeholder="Briefly describe symptoms (e.g., severe chest pain, accident)..."></textarea>
+            <div>
+                <label>Emergency Details / Symptoms:</label>
+                <textarea id="emergencyDescription" placeholder="Briefly describe symptoms (e.g., severe chest pain, accident)..."></textarea>
+            </div>
+
+            <div id="location-status" class="location-badge">
+                📍 Acquiring your GPS location...
+            </div>
+
+            <button id="requestBtn" class="btn-emergency">
+                REQUEST AMBULANCE NOW
+            </button>
+            <div id="status-message" class="success-msg" style="color: #16a34a;"></div>
         </div>
 
-        <div id="location-status" class="location-badge">
-            📍 Acquiring your GPS location...
-        </div>
-
-        <button id="requestBtn" class="btn-emergency">
-            REQUEST AMBULANCE NOW
-        </button>
-        <div id="status-message" class="success-msg" style="color: #16a34a;"></div>
-    </div>
-
-    <!-- Hospital Appointment Booking Card -->
-    <div class="portal-card">
-        <h3>🏥 Book Hospital Appointment</h3>
-        <p id="nearestHospitalInfo" style="color: #64748b; margin-bottom: 15px; font-size: 0.9rem;">Detecting nearest medical facility...</p>
-        
-        <form id="appointmentForm">
-            <input type="hidden" id="hospitalNameInput" name="hospitalName">
+        <!-- Emergency Wallet Card -->
+        <div class="portal-card wallet-card-inner">
+            <h3>💳 My Emergency Wallet</h3>
+            <p style="margin-bottom: 15px; font-size: 0.95rem;">Current Balance: <strong style="font-size: 1.2rem; color: #4ade80;">R <span id="balance-display"><%= user.wallet_balance || '0.00' %></span></strong></p>
             
-            <label>Department:</label>
-            <input type="text" name="department" placeholder="e.g., Trauma, Cardiology" required>
-            
-            <label>Date & Time:</label>
-            <input type="datetime-local" id="appointmentDateInput" name="appointmentDate" required>
-            
-            <button type="submit" class="btn-action">Confirm Hospital Appointment</button>
-        </form>
-        <div id="appointmentResult" class="success-msg" style="color: #16a34a;"></div>
-    </div>
-
-    <!-- Emergency Wallet Card -->
-    <div class="portal-card card-full wallet-card-inner">
-        <h3>💳 My Emergency Wallet</h3>
-        <p style="margin-bottom: 15px; font-size: 0.95rem;">Current Balance: <strong style="font-size: 1.2rem; color: #4ade80;">R <span id="balance-display"><%= user.wallet_balance || '0.00' %></span></strong></p>
-        
-        <div style="display: flex; gap: 10px;">
-            <input type="number" id="topup-amount" placeholder="Amount (e.g. 150)" min="1" step="0.01" style="margin-bottom: 0;">
-            <button onclick="topUpWallet()" class="btn-action" style="width: auto; padding: 10px 20px;">Add Funds</button>
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="topup-amount" placeholder="Amount (e.g. 150)" min="1" step="0.01" style="margin-bottom: 0;">
+                <button onclick="topUpWallet()" class="btn-action" style="width: auto; padding: 10px 20px;">Add Funds</button>
+            </div>
         </div>
     </div>
 </div>
@@ -182,7 +164,7 @@
     let userLat = null;
     let userLon = null;
 
-    // Automatically detect and set current date/time in appointment picker
+    // Automatically detect and set current date/time in appointment picker if present
     window.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -240,37 +222,17 @@
 
     // Listen for server response and hospital matching
     socket.on("new-incident", (data) => {
-        if (data.nearestHospital) {
-            document.getElementById("nearestHospitalInfo").innerHTML = 
+        const hospInfo = document.getElementById("nearestHospitalInfo");
+        if (hospInfo && data.nearestHospital) {
+            hospInfo.innerHTML = 
                 `Nearest Hospital: <b>${data.nearestHospital.name}</b> (${parseFloat(data.nearestHospital.distance_km).toFixed(2)} km away)`;
-            document.getElementById("hospitalNameInput").value = data.nearestHospital.name;
+        }
+        const hospInput = document.getElementById("hospitalNameInput");
+        if (hospInput && data.nearestHospital) {
+            hospInput.value = data.nearestHospital.name;
         }
         const statusMsg = document.getElementById("status-message");
         statusMsg.textContent = `Incident active! Status: ${data.status}`;
-    });
-
-    // Appointment booking form submission
-    document.getElementById("appointmentForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const body = Object.fromEntries(formData);
-
-        try {
-            const res = await fetch("/api/book-appointment", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body)
-            });
-            const result = await res.json();
-            if (result.success) {
-                document.getElementById("appointmentResult").innerText = "Appointment booked successfully!";
-            } else {
-                document.getElementById("appointmentResult").innerText = "Booking failed.";
-            }
-        } catch (err) {
-            console.error("Booking error:", err);
-            document.getElementById("appointmentResult").innerText = "Error submitting appointment.";
-        }
     });
 
     // Wallet top-up handler
@@ -304,4 +266,3 @@
 </script>
 
 <%- include('partials/footer') %>
-

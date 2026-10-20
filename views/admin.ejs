@@ -499,6 +499,19 @@
             });
         }
 
+        // Listen for live socket broadcasts from drivers accepting or declining
+        socket.on('incident-accepted', (data) => {
+            console.log(`Incident #${data.incidentId} was accepted.`);
+            if (typeof loadOpenIncidents === 'function') loadOpenIncidents();
+            if (typeof loadAuditTrail === 'function') loadAuditTrail();
+        });
+
+        socket.on('incident-declined', (data) => {
+            console.log(`Incident #${data.incidentId} was declined and returned to queue.`);
+            if (typeof loadOpenIncidents === 'function') loadOpenIncidents();
+            if (typeof loadAuditTrail === 'function') loadAuditTrail();
+        });
+
         function filterAuditTable(status) {
             if (status === 'all') {
                 renderAuditTable(allAuditIncidents);

@@ -192,8 +192,6 @@ app.get('/admin', ensureAdmin, async (req, res) => {
 });
 
 // --- API Endpoints ---
-
-// Add a new staff member from the Admin Panel modal
 app.post('/api/staff/add', ensureAdmin, async (req, res) => {
     const { name, email, role, password } = req.body;
     if (!name || !email || !role) {
@@ -213,7 +211,6 @@ app.post('/api/staff/add', ensureAdmin, async (req, res) => {
     }
 });
 
-// Handle Appointment Booking (Nearest Hospital)
 app.post('/api/book-appointment', ensureAuthenticated, async (req, res) => {
     const { hospitalName, department, appointmentDate } = req.body;
     const userEmail = req.session.user.email || req.session.user.username;
@@ -232,7 +229,6 @@ app.post('/api/book-appointment', ensureAuthenticated, async (req, res) => {
     }
 });
 
-// Handle adding funds to the wallet (Patients)
 app.post('/api/wallet/topup', ensureAuthenticated, async (req, res) => {
     const { amount } = req.body;
     const userId = req.session.user.id;
@@ -262,7 +258,6 @@ app.post('/api/wallet/topup', ensureAuthenticated, async (req, res) => {
     }
 });
 
-// Fetch all past and active incidents for the audit trail log
 app.get('/api/incidents/history', ensureAuthenticated, async (req, res) => {
     try {
         const query = `
@@ -278,7 +273,6 @@ app.get('/api/incidents/history', ensureAuthenticated, async (req, res) => {
     }
 });
 
-// API: Fetch all drivers from the dedicated drivers table for fleet control
 app.get('/api/admin/drivers', ensureAdmin, async (req, res) => {
     try {
         const query = `SELECT id, username, email, COALESCE(availability_status, 'Online') AS availability_status FROM drivers ORDER BY id DESC;`;
@@ -290,7 +284,6 @@ app.get('/api/admin/drivers', ensureAdmin, async (req, res) => {
     }
 });
 
-// API: Admin override of driver availability status in the drivers table
 app.post('/api/admin/driver/status', ensureAdmin, async (req, res) => {
     const { driverId, status } = req.body;
     try {
@@ -303,7 +296,6 @@ app.post('/api/admin/driver/status', ensureAdmin, async (req, res) => {
     }
 });
 
-// API: Assign ambulance driver to an open incident
 app.post('/api/admin/assign-incident', ensureAdmin, async (req, res) => {
     const { incidentId, driverId } = req.body;
     
@@ -339,14 +331,12 @@ app.post('/api/admin/assign-incident', ensureAdmin, async (req, res) => {
     }
 });
 
-
 // --- Socket.io Real-time Logic ---
 const activeVehicles = {};
 
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
-    // 1. Emergency Requests & Nearest Hospital Matching
     socket.on('emergency-request', async function (data = {}) {
         try {
             const { description, latitude, longitude } = data;
@@ -388,7 +378,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 2. Handle Driver Accepting an Incident
     socket.on('accept-incident', async (data) => {
         const { incidentId, driverId } = data;
         try {
@@ -415,7 +404,31 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. Location Tracking & Logging
+    // Handle Driver Declining an Incident (Inside connection scope)
+    socket.on('decline-incident', async (data) => {
+        const { incidentId, driverId } = data;
+        try {
+            const query = `
+                UPDATE incidents 
+                SET status = 'open', claimed_by = NULL 
+                WHERE id = $1 
+                RETURNING *;
+            `;
+            const result = await pool.query(query, [incidentId]);
+            
+            if (result.rows.length > 0) {
+                io.emit('incident-declined', {
+                    incidentId: incidentId,
+                    driverId: driverId
+                });
+                
+                console.log(`Incident #${incidentId} was declined by Driver #${driverId} and returned to open queue.`);
+            }
+        } catch (err) {
+            console.error('Error declining incident:', err.message);
+        }
+    });
+
     socket.on('send-location', async (data = {}) => {
         const { vehicleId, latitude, longitude } = data;
         activeVehicles[socket.id] = { latitude, longitude };
@@ -451,7 +464,6 @@ io.on('connection', (socket) => {
         io.emit('user-disconnected', socket.id);
     });
 });
-
 
 // --- Start Server ---
 const PORT = process.env.PORT || 3000;

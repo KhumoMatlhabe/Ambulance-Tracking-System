@@ -30,6 +30,14 @@ function ensureAuthenticated(req, res, next) {
     return res.redirect('/login');
 }
 
+// Admin Authentication Middleware
+function ensureAdmin(req, res, next) {
+    if (req.session && req.session.user && req.session.user.role === 'admin') {
+        return next();
+    }
+    return res.redirect('/admin-login');
+}
+
 // --- Express Views & Authentication Routes ---
 app.get('/', (req, res) => res.render('about'));
 
@@ -41,9 +49,9 @@ app.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
     try {
         const query = `
-            INSERT INTO users (username, email, password, wallet_balance)
-            VALUES ($1, $2, $3, 0.00)
-            RETURNING id, username, email, wallet_balance;
+            INSERT INTO users (username, email, password, wallet_balance, role)
+            VALUES ($1, $2, $3, 0.00, 'patient')
+            RETURNING id, username, email, wallet_balance, role;
         `;
         const values = [username || email.split('@')[0], email, password];
         const result = await pool.query(query, values);
@@ -78,6 +86,54 @@ app.post('/login', async (req, res) => {
     }
 });
 
+// Admin Registration & Login Routes
+app.get('/admin-register', (req, res) => {
+    res.render('admin-register', { error: null });
+});
+
+app.post('/admin-register', async (req, res) => {
+    const { username, email, password } = req.body;
+    try {
+        const query = `
+            INSERT INTO users (username, email, password, wallet_balance, role)
+            VALUES ($1, $2, $3, 0.00, 'admin')
+            RETURNING id, username, email, wallet_balance, role;
+        `;
+        const values = [username || email.split('@')[0], email, password];
+        const result = await pool.query(query, values);
+        req.session.user = result.rows[0];
+        res.redirect('/admin');
+    } catch (err) {
+        console.error('Admin registration error:', err.message);
+        res.status(400).render('admin-register', { error: 'Registration failed. Email or username may already be in use.' });
+    }
+});
+
+app.get('/admin-login', (req, res) => {
+    res.render('admin-login', { error: null });
+});
+
+app.post('/admin-login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.render('admin-login', { error: 'Please fill in all fields.' });
+    }
+    try {
+        const query = `SELECT * FROM users WHERE email = $1 AND password = $2 AND role = 'admin'`;
+        const result = await pool.query(query, [email, password]);
+        
+        if (result.rows.length === 0) {
+            return res.render('admin-login', { error: 'Invalid admin credentials or unauthorized account.' });
+        }
+        
+        req.session.user = result.rows[0];
+        return res.redirect('/admin');
+    } catch (err) {
+        console.error('Admin login error:', err.message);
+        res.status(500).render('admin-login', { error: 'An error occurred during login.' });
+    }
+});
+
 // Driver Login Routes
 app.get('/driver-login', (req, res) => {
     res.render('driver-login', { error: null });
@@ -104,7 +160,7 @@ app.post('/driver-login', async (req, res) => {
     }
 });
 
-// Protected Driver Dashboard Route
+// Protected Dashboards & Views
 app.get('/driver', ensureAuthenticated, async (req, res) => {
     try {
         const result = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [req.session.user.id]);
@@ -129,6 +185,50 @@ app.get('/patient', ensureAuthenticated, async (req, res) => {
 
 app.get('/consultation', ensureAuthenticated, (req, res) => {
     res.render('consultation', { user: req.session.user });
+});
+
+// Protected Admin Dashboard Route
+app.get('/admin', ensureAdmin, async (req, res) => {
+    try {
+        const statsQuery = `
+            SELECT 
+                COUNT(*) AS total_incidents,
+                SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS open_incidents,
+                SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END) AS assigned_incidents
+            FROM incidents;
+        `;
+        const statsResult = await pool.query(statsQuery);
+        const staffResult = await pool.query('SELECT * FROM staff ORDER BY created_at DESC;');
+        
+        res.render('admin', { 
+            user: req.session.user, 
+            stats: statsResult.rows[0] || { total_incidents: 0, open_incidents: 0, assigned_incidents: 0 },
+            staff: staffResult.rows 
+        });
+    } catch (err) {
+        console.error('Admin dashboard error:', err.message);
+        res.render('admin', { user: req.session.user, stats: {}, staff: [] });
+    }
+});
+
+// API: Add a new staff member
+app.post('/api/staff/add', ensureAdmin, async (req, res) => {
+    const { name, email, role } = req.body;
+    if (!name || !email || !role) {
+        return res.status(400).json({ success: false, error: 'Please provide name, email, and role.' });
+    }
+    try {
+        const query = `
+            INSERT INTO staff (name, email, role, status)
+            VALUES ($1, $2, $3, 'Active')
+            RETURNING *;
+        `;
+        const result = await pool.query(query, [name, email, role]);
+        res.status(200).json({ success: true, staff: result.rows[0] });
+    } catch (err) {
+        console.error('Error adding staff member:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to add staff member. Email may already exist.' });
+    }
 });
 
 // Handle Appointment Booking (Nearest Hospital)

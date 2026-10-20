@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin & Command Center - EMS</title>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --border-color: #334155;
+            --accent-blue: #0ea5e9;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 { font-size: 1.25rem; color: var(--accent-blue); display: flex; align-items: center; gap: 10px; }
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; width: 100%; flex-grow: 1; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px; }
+        .stat-card p { font-size: 1.8rem; font-weight: bold; color: #f1f5f9; }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .section-header h2 { font-size: 1.1rem; color: #38bdf8; }
+        
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary:hover { background-color: #0284c7; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 40px;
+        }
+        th, td { padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+        th { color: var(--text-secondary); background-color: rgba(15, 23, 42, 0.4); font-weight: 600; }
+        td { color: #cbd5e1; }
+
+        /* Form Modal */
+        #staffModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            width: 450px;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 20px 25px rgba(0,0,0,0.4);
+        }
+        .modal-content h3 { color: #38bdf8; margin-bottom: 20px; }
+        label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; }
+        input, select {
+            width: 100%; padding: 10px; background: var(--bg-main);
+            border: 1px solid var(--border-color); border-radius: 6px;
+            color: white; margin-bottom: 15px; font-size: 0.9rem;
+        }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+        .btn-secondary { background: var(--border-color); color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🛡️ EMS Admin & Operations Command</h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 0.88rem; color: var(--text-secondary);">Logged in as: <strong><%= (typeof user !== 'undefined' && user && user.username) ? user.username : 'Administrator' %></strong></span>
+            <a href="/driver" style="color: var(--accent-blue); text-decoration: none; font-size: 0.88rem; font-weight: 600;">← Driver Dashboard</a>
+            <a href="/login" style="color: #f43f5e; text-decoration: none; font-size: 0.88rem; font-weight: 600;">Logout</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- System Quick Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Incidents Logged</h3>
+                <p><%= (typeof stats !== 'undefined' && stats.total_incidents) ? stats.total_incidents : 0 %></p>
+            </div>
+            <div class="stat-card">
+                <h3>Open / Pending Alerts</h3>
+                <p style="color: #e11d48;"><%= (typeof stats !== 'undefined' && stats.open_incidents) ? stats.open_incidents : 0 %></p>
+            </div>
+            <div class="stat-card">
+                <h3>Active Dispatches</h3>
+                <p style="color: #eab308;"><%= (typeof stats !== 'undefined' && stats.assigned_incidents) ? stats.assigned_incidents : 0 %></p>
+            </div>
+        </div>
+
+        <!-- Staff Members Management Section -->
+        <div class="section-header">
+            <h2>👥 Medical & Dispatch Staff Directory</h2>
+            <button class="btn-primary" onclick="openStaffModal()">+ Add Staff Member</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Full Name</th>
+                    <th>Email Address</th>
+                    <th>Assigned Role</th>
+                    <th>Status</th>
+                    <th>Registered Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof staff !== 'undefined' && staff && staff.length > 0) { %>
+                    <% staff.forEach(member => { %>
+                        <tr>
+                            <td>#<%= member.id %></td>
+                            <td><strong><%= member.name %></strong></td>
+                            <td><%= member.email %></td>
+                            <td><span style="padding: 4px 10px; border-radius: 4px; background: rgba(14, 165, 233, 0.15); color: #38bdf8; font-size: 0.8rem;"><%= member.role %></span></td>
+                            <td><span style="color: #22c55e; font-weight: 600;">● <%= member.status || 'Active' %></span></td>
+                            <td><%= member.created_at ? new Date(member.created_at).toLocaleDateString() : 'N/A' %></td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 30px;">No staff members registered yet. Click "+ Add Staff Member" to begin.</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add Staff Modal -->
+    <div id="staffModal">
+        <div class="modal-content">
+            <h3>Register New Staff Member</h3>
+            <form id="staffForm" onsubmit="submitStaff(event)">
+                <label>Full Name:</label>
+                <input type="text" id="staffName" placeholder="Dr. Sarah Johnson" required>
+
+                <label>Email Address:</label>
+                <input type="email" id="staffEmail" placeholder="sarah.johnson@ems.co.za" required>
+
+                <label>System Role:</label>
+                <select id="staffRole">
+                    <option value="Dispatcher">Emergency Dispatcher</option>
+                    <option value="Doctor">ER Medical Physician</option>
+                    <option value="Paramedic">Response Paramedic</option>
+                    <option value="Administrator">System Administrator</option>
+                </select>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeStaffModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Staff Member</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openStaffModal() {
+            document.getElementById('staffModal').style.display = 'flex';
+        }
+        function closeStaffModal() {
+            document.getElementById('staffModal').style.display = 'none';
+        }
+
+        async function submitStaff(event) {
+            event.preventDefault();
+            const name = document.getElementById('staffName').value;
+            const email = document.getElementById('staffEmail').value;
+            const role = document.getElementById('staffRole').value;
+
+            try {
+                const res = await fetch('/api/staff/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, role })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Staff member registered successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                console.error('Failed to submit staff:', err);
+                alert('Server connection error.');
+            }
+        }
+    </script>
+</body>
+</html>

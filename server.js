@@ -22,7 +22,7 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// Authentication Middleware
+// Authentication Middleware for standard users (Patients/Drivers)
 function ensureAuthenticated(req, res, next) {
     if (req.session && req.session.user) {
         return next();
@@ -30,9 +30,9 @@ function ensureAuthenticated(req, res, next) {
     return res.redirect('/login');
 }
 
-// Admin Authentication Middleware
+// Admin / Staff Authentication Middleware
 function ensureAdmin(req, res, next) {
-    if (req.session && req.session.user && req.session.user.role === 'admin') {
+    if (req.session && req.session.user && (req.session.user.role === 'Administrator' || req.session.user.role === 'admin')) {
         return next();
     }
     return res.redirect('/admin-login');
@@ -86,26 +86,25 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// Admin Registration & Login Routes
+// Admin / Staff Registration & Login Routes (Tied directly to the staff table)
 app.get('/admin-register', (req, res) => {
     res.render('admin-register', { error: null });
 });
 
 app.post('/admin-register', async (req, res) => {
-    const { username, email, password } = req.body;
+    const { name, email, password, role } = req.body;
     try {
         const query = `
-            INSERT INTO users (username, email, password, wallet_balance, role)
-            VALUES ($1, $2, $3, 0.00, 'admin')
-            RETURNING id, username, email, wallet_balance, role;
+            INSERT INTO staff (name, email, password, role, status)
+            VALUES ($1, $2, $3, $4, 'Active')
+            RETURNING *;
         `;
-        const values = [username || email.split('@')[0], email, password];
-        const result = await pool.query(query, values);
+        const result = await pool.query(query, [name, email, password, role || 'Administrator']);
         req.session.user = result.rows[0];
         res.redirect('/admin');
     } catch (err) {
-        console.error('Admin registration error:', err.message);
-        res.status(400).render('admin-register', { error: 'Registration failed. Email or username may already be in use.' });
+        console.error('Staff registration error:', err.message);
+        res.status(400).render('admin-register', { error: 'Registration failed. Email may already be in use.' });
     }
 });
 
@@ -119,17 +118,17 @@ app.post('/admin-login', async (req, res) => {
         return res.render('admin-login', { error: 'Please fill in all fields.' });
     }
     try {
-        const query = `SELECT * FROM users WHERE email = $1 AND password = $2 AND role = 'admin'`;
+        const query = `SELECT * FROM staff WHERE email = $1 AND password = $2`;
         const result = await pool.query(query, [email, password]);
         
         if (result.rows.length === 0) {
-            return res.render('admin-login', { error: 'Invalid admin credentials or unauthorized account.' });
+            return res.render('admin-login', { error: 'Invalid staff email or password.' });
         }
         
         req.session.user = result.rows[0];
         return res.redirect('/admin');
     } catch (err) {
-        console.error('Admin login error:', err.message);
+        console.error('Staff login error:', err.message);
         res.status(500).render('admin-login', { error: 'An error occurred during login.' });
     }
 });
@@ -201,29 +200,29 @@ app.get('/admin', ensureAdmin, async (req, res) => {
         const staffResult = await pool.query('SELECT * FROM staff ORDER BY created_at DESC;');
         
         res.render('admin', { 
-            user: req.session.user, 
+            user: { username: req.session.user.name || req.session.user.username }, 
             stats: statsResult.rows[0] || { total_incidents: 0, open_incidents: 0, assigned_incidents: 0 },
             staff: staffResult.rows 
         });
     } catch (err) {
         console.error('Admin dashboard error:', err.message);
-        res.render('admin', { user: req.session.user, stats: {}, staff: [] });
+        res.render('admin', { user: { username: 'Administrator' }, stats: {}, staff: [] });
     }
 });
 
-// API: Add a new staff member
+// API: Add a new staff member from the Admin Panel modal
 app.post('/api/staff/add', ensureAdmin, async (req, res) => {
-    const { name, email, role } = req.body;
+    const { name, email, role, password } = req.body;
     if (!name || !email || !role) {
         return res.status(400).json({ success: false, error: 'Please provide name, email, and role.' });
     }
     try {
         const query = `
-            INSERT INTO staff (name, email, role, status)
-            VALUES ($1, $2, $3, 'Active')
+            INSERT INTO staff (name, email, password, role, status)
+            VALUES ($1, $2, $3, $4, 'Active')
             RETURNING *;
         `;
-        const result = await pool.query(query, [name, email, role]);
+        const result = await pool.query(query, [name, email, password || 'defaultpassword123', role]);
         res.status(200).json({ success: true, staff: result.rows[0] });
     } catch (err) {
         console.error('Error adding staff member:', err.message);

@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Portal Registration - EMS</title>
+    <title>Staff & Admin Registration - EMS</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #1e293b; border: 1px solid #334155; padding: 40px; border-radius: 12px; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        h2 { color: #0ea5e9; margin-bottom: 20px; text-align: center; }
+        .card { background: #1e293b; border: 1px solid #334155; padding: 40px; border-radius: 12px; width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h2 { color: #0ea5e9; margin-bottom: 20px; text-align: center; font-size: 1.2rem; }
         label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 6px; }
-        input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white; margin-bottom: 15px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white; margin-bottom: 15px; box-sizing: border-box; }
         button { width: 100%; background: #22c55e; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
         button:hover { background: #16a34a; }
         .error { color: #f43f5e; font-size: 0.85rem; margin-bottom: 15px; text-align: center; }
@@ -18,21 +18,29 @@
 </head>
 <body>
     <div class="card">
-        <h2>🛡️ Register Administrator</h2>
+        <h2>🛡️ Register Staff / Administrator</h2>
         <% if (error) { %>
             <div class="error"><%= error %></div>
         <% } %>
         <form action="/admin-register" method="POST">
-            <label>Username:</label>
-            <input type="text" name="username" placeholder="AdminCommander">
+            <label>Full Name:</label>
+            <input type="text" name="name" placeholder="Dr. Sarah Johnson" required>
 
-            <label>Admin Email:</label>
-            <input type="email" name="email" placeholder="admin@ems.co.za" required>
+            <label>Email Address:</label>
+            <input type="email" name="email" placeholder="sarah@ems.co.za" required>
             
             <label>Password:</label>
             <input type="password" name="password" placeholder="••••••••" required>
+
+            <label>System Role:</label>
+            <select name="role">
+                <option value="Administrator">System Administrator</option>
+                <option value="Dispatcher">Emergency Dispatcher</option>
+                <option value="Doctor">ER Medical Physician</option>
+                <option value="Paramedic">Response Paramedic</option>
+            </select>
             
-            <button type="submit">Create Admin Account</button>
+            <button type="submit">Create Staff Account</button>
         </form>
         <div class="link">
             Already have an account? <a href="/admin-login">Login here</a>

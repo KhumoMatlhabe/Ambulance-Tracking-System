@@ -5,6 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Patient Registration | Ambulance Tracking System</title>
     <link rel="stylesheet" href="/css/style.css" />
+    <style>
+      body {
+        background-color: #0f172a;
+        color: #f8fafc;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+      main {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      header, footer {
+        background-color: #1e293b;
+        border-color: #334155;
+      }
+    </style>
   </head>
   <body>
     <!-- Top Navigation Bar -->
@@ -20,19 +42,19 @@
     <main>
       <div
         class="hero-card"
-        style="max-width: 28rem; margin: 0 auto; text-align: left"
+        style="width: 100%; max-width: 28rem; background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 30px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);"
       >
         <h1
-          style="font-size: 1.75rem; text-align: center; margin-bottom: 0.5rem"
+          style="font-size: 1.75rem; text-align: center; margin-bottom: 0.5rem; color: #0ea5e9;"
         >
           Create Account
         </h1>
-        <p style="text-align: center; font-size: 0.875rem; margin-bottom: 2rem">
+        <p style="text-align: center; font-size: 0.875rem; margin-bottom: 2rem; color: #94a3b8;">
           Register to access emergency dispatch and patient services.
         </p>
 
         <% if (locals.error && error) { %>
-            <div style="color: #dc3545; margin-bottom: 15px; font-size: 14px; text-align: center;"><%= error %></div>
+            <div style="background-color: rgba(225, 29, 72, 0.15); border: 1px solid #e11d48; color: #f43f5e; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px; text-align: center;"><%= error %></div>
         <% } %>
 
         <form
@@ -47,7 +69,7 @@
               name="username"
               required
               placeholder="Enter your username"
-              style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background-color: #0f172a; color: #f8fafc; font-size: 0.95rem;"
+              style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background-color: #0f172a; color: #f8fafc; font-size: 0.95rem; box-sizing: border-box;"
             />
           </div>
 
@@ -58,7 +80,7 @@
               name="email"
               required
               placeholder="Enter your email"
-              style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background-color: #0f172a; color: #f8fafc; font-size: 0.95rem;"
+              style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background-color: #0f172a; color: #f8fafc; font-size: 0.95rem; box-sizing: border-box;"
             />
           </div>
 
@@ -69,21 +91,21 @@
               name="password"
               required
               placeholder="Enter your password"
-              style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background-color: #0f172a; color: #f8fafc; font-size: 0.95rem;"
+              style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background-color: #0f172a; color: #f8fafc; font-size: 0.95rem; box-sizing: border-box;"
             />
           </div>
 
           <button
             type="submit"
             class="btn btn-patient"
-            style="width: 100%; margin-top: 0.5rem; cursor: pointer; border: none; padding: 0.75rem; font-weight: bold;"
+            style="width: 100%; margin-top: 0.5rem; cursor: pointer; border: none; padding: 0.75rem; font-weight: bold; background-color: #0ea5e9; color: white; border-radius: 0.5rem; transition: background-color 0.2s;"
           >
             Register & Proceed
           </button>
         </form>
 
-        <div style="margin-top: 15px; text-align: center; font-size: 14px;">
-            Already have an account? <a href="/login" style="color: #3b82f6; text-decoration: none;">Log in here</a>
+        <div style="margin-top: 20px; text-align: center; font-size: 14px; color: #94a3b8;">
+            Already have an account? <a href="/login" style="color: #0ea5e9; text-decoration: none; font-weight: 600;">Log in here</a>
         </div>
       </div>
     </main>

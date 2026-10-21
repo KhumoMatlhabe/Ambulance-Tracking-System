@@ -465,6 +465,208 @@ io.on('connection', (socket) => {
     });
 });
 
+// --- Driver Registration Routes ---
+app.get('/driver-register', (req, res) => res.render('driver-register', { error: null }));
+
+app.post('/driver-register', async (req, res) => {
+    const { username, email, password, vehicle_id } = req.body;
+    try {
+        const query = `
+            INSERT INTO drivers (username, email, password, availability_status, vehicle_id)
+            VALUES ($1, $2, $3, 'Online', $4)
+            RETURNING id, username, email, availability_status;
+        `;
+        const result = await pool.query(query, [username, email, password, vehicle_id || 'Ambulance-101']);
+        req.session.user = { ...result.rows[0], userType: 'driver' };
+        res.redirect('/driver');
+    } catch (err) {
+        console.error('Driver registration error:', err.message);
+        res.status(400).render('driver-register', { error: 'Registration failed. Email or username may already be in use.' });
+    }
+});
+
+// --- Driver Registration Routes ---
+app.get('/driver-register', (req, res) => {
+    res.render('driver-register', { error: null });
+});
+
+app.post('/driver-register', async (req, res) => {
+    const { username, email, password, vehicle_id } = req.body;
+    try {
+        const query = `
+            INSERT INTO drivers (username, email, password, availability_status, vehicle_id)
+            VALUES ($1, $2, $3, 'Online', $4)
+            RETURNING id, username, email, availability_status;
+        `;
+        const result = await pool.query(query, [username, email, password, vehicle_id || 'Ambulance-101']);
+        req.session.user = { ...result.rows[0], userType: 'driver' };
+        res.redirect('/driver');
+    } catch (err) {
+        console.error('Driver registration error:', err.message);
+        res.status(400).render('driver-register', { error: 'Registration failed. Email or username may already be in use.' });
+    }
+});
+
+// --- Authentication Routes ---
+
+// Patient Login / Register
+app.get('/login', (req, res) => res.render('login', { error: null }));
+app.get('/register', (req, res) => res.render('register', { error: null }));
+
+// Driver Login / Register (MAKE SURE THESE EXIST)
+app.get('/driver-login', (req, res) => res.render('driver-login', { error: null }));
+
+app.get('/driver-register', (req, res) => {
+    res.render('driver-register', { error: null });
+});
+
+app.post('/driver-register', async (req, res) => {
+    const { username, email, password, vehicle_id } = req.body;
+    try {
+        const query = `
+            INSERT INTO drivers (username, email, password, availability_status, vehicle_id)
+            VALUES ($1, $2, $3, 'Online', $4)
+            RETURNING id, username, email, availability_status;
+        `;
+        const result = await pool.query(query, [username, email, password, vehicle_id || 'Ambulance-101']);
+        req.session.user = { ...result.rows[0], userType: 'driver' };
+        res.redirect('/driver');
+    } catch (err) {
+        console.error('Driver registration error:', err.message);
+        res.status(400).render('driver-register', { error: 'Registration failed. Email or username may already be in use.' });
+    }
+});
+
+
+// Function to find the nearest hospital from database
+async function findNearestHospital(lat, lon) {
+    try {
+        const query = `
+            SELECT id, name, city, province, latitude, longitude,
+            ( 6371 * acos( cos( radians($1) ) * cos( radians( latitude ) ) 
+            * cos( radians( longitude ) - radians($2) ) + sin( radians($1) ) 
+            * sin( radians( latitude ) ) ) ) AS distance_km
+            FROM hospitals
+            WHERE emergency_services = TRUE
+            ORDER BY distance_km ASC
+            LIMIT 1;
+        `;
+        const result = await pool.query(query, [lat, lon]);
+        return result.rows[0] || null;
+    } catch (err) {
+        console.error('Error finding nearest hospital:', err.message);
+        return null;
+    }
+}
+
+// 1. Handle Patient Appointment Submission
+app.post('/api/book-appointment', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please sign in.' });
+    }
+
+    const { appointment_date, symptoms } = req.body;
+    const patientId = req.session.user.id;
+    const patientEmail = req.session.user.email;
+
+    try {
+        const query = `
+            INSERT INTO appointments (patient_id, patient_email, appointment_date, symptoms, status)
+            VALUES ($1, $2, $3, $4, 'Pending')
+            RETURNING id, appointment_date, status;
+        `;
+        const result = await pool.query(query, [patientId, patientEmail, appointment_date, symptoms]);
+        res.json({ success: true, appointment: result.rows[0] });
+    } catch (err) {
+        console.error('Appointment booking error:', err.message);
+        res.status(500).json({ success: false, error: 'Database error while booking.' });
+    }
+});
+
+// 2. Doctor/Admin Dashboard Route to View Appointments
+app.get('/admin/appointments', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM appointments ORDER BY appointment_date ASC');
+        res.render('admin-appointments', { appointments: result.rows, user: req.session.user });
+    } catch (err) {
+        console.error('Error fetching appointments:', err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// 3. Confirm/Accept Appointment Route
+app.post('/admin/appointments/:id/confirm', async (req, res) => {
+    const appointmentId = req.params.id;
+    try {
+        await pool.query("UPDATE appointments SET status = 'Confirmed' WHERE id = $1", [appointmentId]);
+        res.redirect('/admin/appointments');
+    } catch (err) {
+        console.error('Error confirming appointment:', err.message);
+        res.status(500).send('Error updating appointment status');
+    }
+});
+
+app.get('/admin', async (req, res) => {
+    // Optional: add admin authentication check here
+    try {
+        const incidents = await pool.query('SELECT * FROM incidents ORDER BY created_at DESC');
+        const drivers = await pool.query('SELECT * FROM drivers');
+        const appointments = await pool.query('SELECT * FROM appointments ORDER BY appointment_date ASC');
+
+        res.render('admin', { 
+            user: req.session.user, 
+            incidents: incidents.rows, 
+            drivers: drivers.rows,
+            appointments: appointments.rows 
+        });
+    } catch (err) {
+        console.error('Error loading admin dashboard:', err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// Route to handle confirming appointments from the admin panel
+app.post('/admin/appointments/:id/confirm', async (req, res) => {
+    const appointmentId = req.params.id;
+    try {
+        await pool.query("UPDATE appointments SET status = 'Confirmed' WHERE id = $1", [appointmentId]);
+        res.redirect('/admin');
+    } catch (err) {
+        console.error('Error confirming appointment:', err.message);
+        res.status(500).send('Error updating appointment status');
+    }
+});
+
+
+// route to capture the hospital selection from the patient form and store it in the database
+app.post('/api/book-appointment', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please sign in.' });
+    }
+
+    const { appointment_date, symptoms, hospital_name } = req.body;
+    const patientId = req.session.user.id;
+    const patientEmail = req.session.user.email;
+
+    try {
+        const query = `
+            INSERT INTO appointments (patient_id, patient_email, appointment_date, symptoms, hospital_name, status)
+            VALUES ($1, $2, $3, $4, $5, 'Pending')
+            RETURNING id, appointment_date, hospital_name, status;
+        `;
+        const result = await pool.query(query, [patientId, patientEmail, appointment_date, symptoms, hospital_name || 'General Facility']);
+        res.json({ success: true, appointment: result.rows[0] });
+    } catch (err) {
+        console.error('Appointment booking error:', err.message);
+        res.status(500).json({ success: false, error: 'Database error while booking.' });
+    }
+});
+
+
+
+
+
+
 // --- Start Server ---
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

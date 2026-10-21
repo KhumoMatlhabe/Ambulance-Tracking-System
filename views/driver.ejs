@@ -207,7 +207,9 @@
           const ambulanceIcon = L.divIcon({
             className: "ambulance-icon",
             html: "🚑",
-            iconSize: [35, 35],
+            iconSize: [150, 150],
+            iconAnchor: [24, 24], // <--- Half of iconSize to keep the point centered
+            popupAnchor: [0, -24],
           });
 
           ambulanceMarkers[id] = L.marker([latitude, longitude], {

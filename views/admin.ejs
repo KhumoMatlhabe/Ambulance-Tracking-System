@@ -222,6 +222,55 @@
             </tbody>
         </table>
 
+        <!-- Patient Consultation Requests (Doctor Appointments Queue) -->
+        <div class="section-header" style="margin-top: 40px;">
+            <h2>📅 Patient Consultation Requests</h2>
+            <button class="btn-primary" onclick="location.reload()">🔄 Refresh Appointments</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Patient Email</th>
+                    <th>Scheduled Time</th>
+                    <th>Symptoms / Notes</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof appointments !== 'undefined' && appointments && appointments.length > 0) { %>
+                    <% appointments.forEach(app => { %>
+                        <tr>
+                            <td><%= app.patient_email %></td>
+                            <td><%= new Date(app.appointment_date).toLocaleString() %></td>
+                            <td style="color: #cbd5e1;"><%= app.symptoms || 'None' %></td>
+                            <td>
+                                <% if (app.status === 'Confirmed') { %>
+                                    <span style="background-color: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">Confirmed</span>
+                                <% } else { %>
+                                    <span style="background-color: rgba(234, 179, 8, 0.15); color: #facc15; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">Pending</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <% if (app.status !== 'Confirmed') { %>
+                                    <form action="/admin/appointments/<%= app.id %>/confirm" method="POST" style="margin: 0;">
+                                        <button type="submit" class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;">Confirm</button>
+                                    </form>
+                                <% } else { %>
+                                    <span style="color: var(--text-secondary); font-size: 0.8rem;">Scheduled</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 30px;">No appointment requests currently in queue.</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+
         <!-- Municipal Incident Audit Trail & Compliance Log with Filters -->
         <div class="section-header" style="margin-top: 40px;">
             <h2>📊 Municipal Incident Audit Trail & Compliance Log</h2>
@@ -280,7 +329,11 @@
         </div>
     </div>
 
+    <!-- Socket.io Script Integration -->
+    <script src="/socket.io/socket.io.js"></script>
     <script>
+        const socket = io();
+
         function openStaffModal() {
             document.getElementById('staffModal').style.display = 'flex';
         }

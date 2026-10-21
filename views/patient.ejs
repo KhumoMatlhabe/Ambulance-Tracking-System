@@ -17,17 +17,18 @@
         gap: 20px;
     }
     .portal-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+        background: #1e293b;
+        border: 1px solid #334155;
         border-radius: 12px;
         padding: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        color: #f8fafc;
     }
     .portal-card h3 {
         margin-top: 0;
         margin-bottom: 10px;
         font-size: 1.2rem;
-        color: #1e293b;
+        color: #0ea5e9;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -36,7 +37,7 @@
         display: block;
         font-size: 0.875rem;
         font-weight: 600;
-        color: #475569;
+        color: #cbd5e1;
         margin-bottom: 6px;
     }
     .portal-card input[type="text"],
@@ -44,9 +45,11 @@
     .portal-card input[type="number"],
     .portal-card textarea {
         width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #cbd5e1;
+        padding: 11px 12px;
+        background-color: #0f172a;
+        border: 1px solid #334155;
         border-radius: 6px;
+        color: #f8fafc;
         font-size: 0.95rem;
         margin-bottom: 14px;
         box-sizing: border-box;
@@ -54,15 +57,15 @@
     }
     .portal-card input:focus, .portal-card textarea:focus {
         outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
     }
     .portal-card textarea {
         resize: vertical;
         min-height: 80px;
     }
     .btn-emergency {
-        background-color: #dc3545;
+        background-color: #e11d48;
         color: white;
         border: none;
         width: 100%;
@@ -74,10 +77,10 @@
         transition: background-color 0.2s;
     }
     .btn-emergency:hover {
-        background-color: #b91c1c;
+        background-color: #be123c;
     }
     .btn-action {
-        background-color: #0284c7;
+        background-color: #0ea5e9;
         color: white;
         border: none;
         width: 100%;
@@ -89,28 +92,21 @@
         transition: background-color 0.2s;
     }
     .btn-action:hover {
-        background-color: #0369a1;
+        background-color: #0284c7;
     }
     .location-badge {
-        background: #f1f5f9;
-        border: 1px solid #cbd5e1;
+        background: #0f172a;
+        border: 1px solid #334155;
         padding: 10px;
         border-radius: 6px;
         font-size: 0.85rem;
-        color: #334155;
+        color: #94a3b8;
         margin-bottom: 15px;
         text-align: center;
         font-weight: 500;
     }
     .wallet-card-inner {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        color: white;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    .wallet-card-inner h3 {
-        color: #38bdf8;
     }
     .success-msg {
         margin-top: 10px;
@@ -122,10 +118,11 @@
 
 <div class="patient-wrapper">
     <div class="patient-dashboard">
-        <!-- Emergency Request Card -->
+        
+        <!-- 1. Emergency Request Card -->
         <div class="portal-card">
             <h3>🚨 Request Emergency Assistance</h3>
-            <p style="color: #64748b; margin-bottom: 15px; font-size: 0.9rem;">
+            <p style="color: #94a3b8; margin-bottom: 15px; font-size: 0.9rem;">
                 Instant ambulance dispatch using real-time GPS telemetry.
             </p>
 
@@ -141,19 +138,48 @@
             <button id="requestBtn" class="btn-emergency">
                 REQUEST AMBULANCE NOW
             </button>
-            <div id="status-message" class="success-msg" style="color: #16a34a;"></div>
+            <div id="status-message" class="success-msg" style="color: #4ade80;"></div>
         </div>
 
-        <!-- Emergency Wallet Card -->
+        <!-- 2. Doctor Appointment Booking Card -->
+        <div class="portal-card">
+            <h3>📅 Book Medical Consultation</h3>
+            <p style="color: #94a3b8; margin-bottom: 15px; font-size: 0.9rem;">
+                Schedule a consultation with an attending medical officer for review.
+            </p>
+
+            <form id="appointmentForm">
+                <label>Select Date & Time:</label>
+                <input type="datetime-local" id="appointmentDateInput" name="appointment_date" required>
+
+                <label>Consultation Notes / Reason:</label>
+                <textarea name="symptoms" placeholder="Describe symptoms or reason for visit..."></textarea>
+
+                <label>Select Hospital / Facility:</label>
+                <select name="hospital_name" required>
+                    <option value="" disabled selected>Select nearest hospital...</option>
+                    <option value="Groote Schuur Hospital">Groote Schuur Hospital (Cape Town)</option>
+                    <option value="Tygerberg Hospital">Tygerberg Hospital (Bellville)</option>
+                    <option value="New Somerset Hospital">New Somerset Hospital (Green Point)</option>
+                    <option value="Mediclinic Cape Town">Mediclinic Cape Town</option>
+</select>
+
+                <button type="submit" class="btn-action">BOOK APPOINTMENT</button>
+            </form>
+            <div id="appointmentResult" class="success-msg" style="color: #4ade80;"></div>
+        </div>
+
+        <!-- 3. Emergency Wallet Card -->
         <div class="portal-card wallet-card-inner">
             <h3>💳 My Emergency Wallet</h3>
-            <p style="margin-bottom: 15px; font-size: 0.95rem;">Current Balance: <strong style="font-size: 1.2rem; color: #4ade80;">R <span id="balance-display"><%= user.wallet_balance || '0.00' %></span></strong></p>
+            <p style="margin-bottom: 15px; font-size: 0.95rem; color: #cbd5e1;">Current Balance: <strong style="font-size: 1.2rem; color: #4ade80;">R <span id="balance-display"><%= user.wallet_balance || '0.00' %></span></strong></p>
             
             <div style="display: flex; gap: 10px;">
                 <input type="number" id="topup-amount" placeholder="Amount (e.g. 150)" min="1" step="0.01" style="margin-bottom: 0;">
                 <button onclick="topUpWallet()" class="btn-action" style="width: auto; padding: 10px 20px;">Add Funds</button>
             </div>
         </div>
+
     </div>
 </div>
 
@@ -164,7 +190,7 @@
     let userLat = null;
     let userLon = null;
 
-    // Automatically detect and set current date/time in appointment picker if present
+    // Automatically detect and set current date/time in appointment picker
     window.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -215,24 +241,40 @@
         });
 
         const statusMsg = document.getElementById("status-message");
-        statusMsg.style.color = "#16a34a";
+        statusMsg.style.color = "#4ade80";
         statusMsg.textContent = "🚨 Emergency broadcast sent! Ambulance dispatch notified.";
         document.getElementById("emergencyDescription").value = "";
     });
 
     // Listen for server response and hospital matching
     socket.on("new-incident", (data) => {
-        const hospInfo = document.getElementById("nearestHospitalInfo");
-        if (hospInfo && data.nearestHospital) {
-            hospInfo.innerHTML = 
-                `Nearest Hospital: <b>${data.nearestHospital.name}</b> (${parseFloat(data.nearestHospital.distance_km).toFixed(2)} km away)`;
-        }
-        const hospInput = document.getElementById("hospitalNameInput");
-        if (hospInput && data.nearestHospital) {
-            hospInput.value = data.nearestHospital.name;
-        }
         const statusMsg = document.getElementById("status-message");
         statusMsg.textContent = `Incident active! Status: ${data.status}`;
+    });
+
+    // Appointment booking form submission
+    document.getElementById("appointmentForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const body = Object.fromEntries(formData);
+
+        try {
+            const res = await fetch("/api/book-appointment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+            const result = await res.json();
+            if (result.success) {
+                document.getElementById("appointmentResult").innerText = "✅ Appointment booked successfully! Pending medical review.";
+                e.target.reset();
+            } else {
+                document.getElementById("appointmentResult").innerText = "⚠️ Booking failed: " + (result.error || "Unknown error");
+            }
+        } catch (err) {
+            console.error("Booking error:", err);
+            document.getElementById("appointmentResult").innerText = "❌ Error submitting appointment.";
+        }
     });
 
     // Wallet top-up handler

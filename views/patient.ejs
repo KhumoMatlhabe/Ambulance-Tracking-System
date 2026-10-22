@@ -43,6 +43,7 @@
     .portal-card input[type="text"],
     .portal-card input[type="datetime-local"],
     .portal-card input[type="number"],
+    .portal-card select,
     .portal-card textarea {
         width: 100%;
         padding: 11px 12px;
@@ -55,7 +56,9 @@
         box-sizing: border-box;
         transition: border-color 0.2s;
     }
-    .portal-card input:focus, .portal-card textarea:focus {
+    .portal-card input:focus, 
+    .portal-card select:focus, 
+    .portal-card textarea:focus {
         outline: none;
         border-color: #0ea5e9;
         box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
@@ -107,6 +110,16 @@
     }
     .wallet-card-inner {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    }
+    .wallet-flex {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .wallet-flex input {
+        flex: 1;
+        min-width: 120px;
+        margin-bottom: 0 !important;
     }
     .success-msg {
         margin-top: 10px;
@@ -162,7 +175,7 @@
                     <option value="Tygerberg Hospital">Tygerberg Hospital (Bellville)</option>
                     <option value="New Somerset Hospital">New Somerset Hospital (Green Point)</option>
                     <option value="Mediclinic Cape Town">Mediclinic Cape Town</option>
-</select>
+                </select>
 
                 <button type="submit" class="btn-action">BOOK APPOINTMENT</button>
             </form>
@@ -174,8 +187,8 @@
             <h3>💳 My Emergency Wallet</h3>
             <p style="margin-bottom: 15px; font-size: 0.95rem; color: #cbd5e1;">Current Balance: <strong style="font-size: 1.2rem; color: #4ade80;">R <span id="balance-display"><%= user.wallet_balance || '0.00' %></span></strong></p>
             
-            <div style="display: flex; gap: 10px;">
-                <input type="number" id="topup-amount" placeholder="Amount (e.g. 150)" min="1" step="0.01" style="margin-bottom: 0;">
+            <div class="wallet-flex">
+                <input type="number" id="topup-amount" placeholder="Amount (e.g. 150)" min="1" step="0.01">
                 <button onclick="topUpWallet()" class="btn-action" style="width: auto; padding: 10px 20px;">Add Funds</button>
             </div>
         </div>
@@ -190,7 +203,6 @@
     let userLat = null;
     let userLon = null;
 
-    // Automatically detect and set current date/time in appointment picker
     window.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -201,7 +213,6 @@
         }
     });
 
-    // Automatically fetch patient GPS coordinates on page load
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -214,7 +225,7 @@
                 console.error("Geolocation error:", error);
                 document.getElementById("location-status").innerHTML =
                     `⚠️ Precise location unavailable. Using city fallback.`;
-                userLat = -33.9249; // Cape Town center fallback
+                userLat = -33.9249; 
                 userLon = 18.4241;
             },
             { enableHighAccuracy: true }
@@ -225,7 +236,6 @@
         userLon = 18.4241;
     }
 
-    // Emergency request dispatch handler
     document.getElementById("requestBtn").addEventListener("click", () => {
         if (userLat === null || userLon === null) {
             alert("Please wait while we acquire your GPS location.");
@@ -246,13 +256,11 @@
         document.getElementById("emergencyDescription").value = "";
     });
 
-    // Listen for server response and hospital matching
     socket.on("new-incident", (data) => {
         const statusMsg = document.getElementById("status-message");
         statusMsg.textContent = `Incident active! Status: ${data.status}`;
     });
 
-    // Appointment booking form submission
     document.getElementById("appointmentForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -277,7 +285,6 @@
         }
     });
 
-    // Wallet top-up handler
     async function topUpWallet() {
         const amount = document.getElementById('topup-amount').value;
         if (!amount || amount <= 0) {

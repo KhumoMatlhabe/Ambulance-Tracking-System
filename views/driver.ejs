@@ -1,52 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Driver Dashboard - EMS</title>
-    <!-- Leaflet CSS -->
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
-    <style>
-      :root {
+<%- include('partials/header', { title: 'Driver Dashboard - EMS' }) %>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+    :root {
         --bg-main: #0f172a;
         --bg-card: #1e293b;
         --border-color: #334155;
         --accent-blue: #0ea5e9;
         --text-primary: #f8fafc;
         --text-secondary: #94a3b8;
-      }
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background-color: var(--bg-main);
-        color: var(--text-primary);
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-      }
-      header {
-        background-color: var(--bg-card);
-        border-bottom: 1px solid var(--border-color);
-        padding: 16px 30px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      header h1 {
-        font-size: 1.25rem;
-        color: var(--accent-blue);
+    }
+    .ambulance-icon {
+        font-size: 36px;
         display: flex;
         align-items: center;
-        gap: 10px;
-      }
-      .container {
+        justify-content: center;
+        background: transparent;
+    }
+    .patient-icon {
+        font-size: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+    }
+    .driver-container {
         max-width: 1200px;
         margin: 20px auto;
         padding: 0 20px;
@@ -55,28 +35,26 @@
         display: flex;
         flex-direction: column;
         gap: 20px;
-      }
-
-      #map {
+    }
+    #map {
         width: 100%;
         height: 450px;
         border-radius: 8px;
         border: 1px solid var(--border-color);
-      }
-
-      .card {
+        z-index: 1;
+    }
+    .card {
         background-color: var(--bg-card);
         border: 1px solid var(--border-color);
         padding: 20px;
         border-radius: 8px;
-      }
-      .card h3 {
+    }
+    .card h3 {
         color: #38bdf8;
         margin-bottom: 12px;
         font-size: 1rem;
-      }
-
-      .btn-primary {
+    }
+    .btn-primary {
         background-color: var(--accent-blue);
         color: white;
         border: none;
@@ -84,12 +62,11 @@
         border-radius: 6px;
         font-weight: 600;
         cursor: pointer;
-      }
-      .btn-primary:hover {
+    }
+    .btn-primary:hover {
         background-color: #0284c7;
-      }
-
-      .btn-danger {
+    }
+    .btn-danger {
         background-color: #e11d48;
         color: white;
         border: none;
@@ -97,236 +74,228 @@
         border-radius: 6px;
         font-weight: 600;
         cursor: pointer;
-      }
-      .btn-danger:hover {
+    }
+    .btn-danger:hover {
         background-color: #be123c;
-      }
-
-      ul {
+    }
+    ul {
         list-style: none;
-      }
-      li {
+    }
+    li {
         padding: 10px;
         border-bottom: 1px solid var(--border-color);
         display: flex;
         justify-content: space-between;
         align-items: center;
         font-size: 0.9rem;
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>🚑 EMS Driver & Response Unit Dashboard</h1>
-      <div style="display: flex; align-items: center; gap: 15px">
-        <span style="font-size: 0.88rem; color: var(--text-secondary)"
-          >Unit Operator:
-          <strong
-            ><%= (typeof user !== 'undefined' && user && user.username) ?
-            user.username : 'Driver' %></strong
-          ></span
-        >
-        <a
-          href="/login"
-          style="
-            color: #f43f5e;
-            text-decoration: none;
-            font-size: 0.88rem;
-            font-weight: 600;
-          "
-          >Logout</a
-        >
-      </div>
-    </header>
+    }
+</style>
 
-    <div class="container">
-      <!-- Interactive Map View -->
-      <div class="card" style="padding: 10px">
-        <div
-          id="map"
-          data-driver-id="<%= (typeof user !== 'undefined' && user && user.id) ? user.id : 1 %>"
-        ></div>
-      </div>
-
-      <!-- Active Incidents Feed -->
-      <div class="card">
-        <h3>🚨 Incoming Emergency Alerts</h3>
-        <ul id="incidentsList">
-          <li style="color: var(--text-secondary); text-align: center">
-            Waiting for incoming emergency broadcasts...
-          </li>
-        </ul>
-      </div>
+<div class="driver-container">
+    <!-- Driver Info Banner -->
+    <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;">
+        <div>
+            <h2 style="font-size: 1.1rem; color: var(--accent-blue);">🚑 Unit Operator Dashboard</h2>
+            <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 4px;">
+                Logged in as: <strong style="color: var(--text-primary);"><%= (typeof user !== 'undefined' && user && user.username) ? user.username : 'Driver' %></strong> 
+                (Vehicle: <strong><%= (typeof user !== 'undefined' && user && user.vehicle_id) ? user.vehicle_id : 'Ambulance-101' %></strong>)
+            </p>
+        </div>
+        <div>
+            <span style="background: #0f172a; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; color: #4ade80;">
+                ● Status: <%= (typeof user !== 'undefined' && user && user.availability_status) ? user.availability_status : 'Online' %>
+            </span>
+        </div>
     </div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Socket.io -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-      const socket = io();
-      const driverId = Number(document.getElementById("map").dataset.driverId);
+    <!-- Interactive Map View -->
+    <div class="card" style="padding: 10px">
+        <div
+            id="map"
+            data-driver-id="<%= (typeof user !== 'undefined' && user && user.id) ? user.id : 1 %>"
+        ></div>
+    </div>
 
-      // Initialize Leaflet Map centered around Cape Town
-      const map = L.map("map").setView([-33.9249, 18.4241], 13);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    <!-- Active Incidents Feed -->
+    <div class="card">
+        <h3>🚨 Incoming Emergency Alerts</h3>
+        <ul id="incidentsList">
+            <li style="color: var(--text-secondary); text-align: center">
+                Waiting for incoming emergency broadcasts...
+            </li>
+        </ul>
+    </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Socket.io -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    const driverId = Number(document.getElementById("map").dataset.driverId);
+
+    // Initialize Leaflet Map centered around Cape Town
+    const map = L.map("map").setView([-33.9249, 18.4241], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap contributors",
-      }).addTo(map);
+    }).addTo(map);
 
-      let ambulanceMarkers = {};
-      let patientMarker = null;
+    let ambulanceMarkers = {};
+    let patientMarker = null;
 
-      // Broadcast driver GPS position via Geolocation API
-      if (navigator.geolocation) {
+    // Broadcast driver GPS position via Geolocation API
+    if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
-          (position) => {
-            const latitude = position.coords.latitude;
-            const longitude = position.coords.longitude;
+            (position) => {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
 
-            // Send location to server
-            socket.emit("send-location", {
-              vehicleId: driverId,
-              latitude: latitude,
-              longitude: longitude,
-            });
-          },
-          (error) => {
-            console.error("Geolocation error:", error);
-          },
-          { enableHighAccuracy: true },
+                socket.emit("send-location", {
+                    vehicleId: driverId,
+                    latitude: latitude,
+                    longitude: longitude,
+                });
+            },
+            (error) => {
+                console.error("Geolocation error:", error);
+            },
+            { enableHighAccuracy: true },
         );
-      }
+    }
 
-      // Listen for real-time location updates & smoothly animate ambulance marker
-      socket.on("receive-location", (data) => {
+
+
+    // Listen for real-time location updates & smoothly animate ambulance marker
+    socket.on("receive-location", (data) => {
         const { id, latitude, longitude, vehicleId } = data;
 
         if (ambulanceMarkers[id]) {
-          animateMarker(ambulanceMarkers[id], latitude, longitude);
+            animateMarker(ambulanceMarkers[id], latitude, longitude);
         } else {
-          const ambulanceIcon = L.divIcon({
-            className: "ambulance-icon",
-            html: "🚑",
-            iconSize: [150, 150],
-            iconAnchor: [24, 24], // <--- Half of iconSize to keep the point centered
-            popupAnchor: [0, -24],
-          });
+            const ambulanceIcon = L.divIcon({
+                className: "ambulance-icon",
+                html: "🚑",
+                iconSize: [70, 70],
+                iconAnchor: [40, 40],
+                popupAnchor: [0, -20],
+            });
 
-          ambulanceMarkers[id] = L.marker([latitude, longitude], {
-            icon: ambulanceIcon,
-          })
-            .addTo(map)
-            .bindPopup(`Ambulance Unit #${vehicleId || id}`);
+            ambulanceMarkers[id] = L.marker([latitude, longitude], {
+                icon: ambulanceIcon,
+            })
+                .addTo(map)
+                .bindPopup(`Ambulance Unit #${vehicleId || id}`);
         }
-      });
+    });
 
-      // Smooth marker animation helper
-      function animateMarker(marker, targetLat, targetLng, duration = 1000) {
+    // Smooth marker animation helper
+    function animateMarker(marker, targetLat, targetLng, duration = 1000) {
         const startLatLng = marker.getLatLng();
         const startLat = startLatLng.lat;
         const startLng = startLatLng.lng;
         const startTime = performance.now();
 
         function step(currentTime) {
-          const elapsed = currentTime - startTime;
-          const progress = Math.min(elapsed / duration, 1);
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
 
-          const currentLat = startLat + (targetLat - startLat) * progress;
-          const currentLng = startLng + (targetLng - startLng) * progress;
+            const currentLat = startLat + (targetLat - startLat) * progress;
+            const currentLng = startLng + (targetLng - startLng) * progress;
 
-          marker.setLatLng([currentLat, currentLng]);
+            marker.setLatLng([currentLat, currentLng]);
 
-          if (progress < 1) {
-            requestAnimationFrame(step);
-          }
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            }
         }
         requestAnimationFrame(step);
-      }
+    }
 
-      // Listen for new emergency requests
-      socket.on("new-incident", (data) => {
+    // Function to play an emergency notification beep
+function playAlertSound() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch alert tone
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.4); // Beep duration: 0.4 seconds
+    } catch (e) {
+        console.error("Audio playback not supported or blocked by browser policy.", e);
+    }
+}
+
+
+    // Listen for new emergency requests
+    socket.on("new-incident", (data) => {
         const list = document.getElementById("incidentsList");
         if (list.innerHTML.includes("Waiting for incoming")) {
-          list.innerHTML = "";
+            list.innerHTML = "";
         }
 
         const li = document.createElement("li");
         li.setAttribute("data-id", data.id);
         li.innerHTML = `
-              <span><strong>#${data.id}</strong>: ${data.description}</span>
-              <div style="display: flex; gap: 8px;">
-                  <button class="btn-primary" onclick="acceptIncident(${data.id})" style="padding: 4px 10px; font-size: 0.8rem;">Accept</button>
-                  <button class="btn-danger" onclick="declineIncident(this, ${data.id})" style="padding: 4px 10px; font-size: 0.8rem;">Decline</button>
-              </div>
-          `;
+            <span><strong>#${data.id}</strong>: ${data.description}</span>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-primary" onclick="acceptIncident(${data.id})" style="padding: 4px 10px; font-size: 0.8rem;">Accept</button>
+                <button class="btn-danger" onclick="declineIncident(this, ${data.id})" style="padding: 4px 10px; font-size: 0.8rem;">Decline</button>
+            </div>
+        `;
         list.appendChild(li);
-
         // Place patient marker on map
-        if (data.latitude && data.longitude) {
-          if (patientMarker) {
+    if (data.latitude && data.longitude) {
+        if (patientMarker) {
             patientMarker.setLatLng([data.latitude, data.longitude]);
-          } else {
+        } else {
+            // 🚨 PLACE/UPDATE PATIENT ICON HERE:
             const patientIcon = L.divIcon({
-              className: "patient-icon",
-              html: "🚨",
-              iconSize: [30, 30],
+                className: "patient-icon",
+                html: "🚨",
+                iconSize: [44, 44],
+                iconAnchor: [22, 22],
+                popupAnchor: [0, -22],
             });
             patientMarker = L.marker([data.latitude, data.longitude], {
-              icon: patientIcon,
+                icon: patientIcon,
             })
-              .addTo(map)
-              .bindPopup(`Emergency: ${data.description}`)
-              .openPopup();
-          }
+                .addTo(map)
+                .bindPopup(`Emergency: ${data.description}`)
+                .openPopup();
         }
-      });
+    }
+});
 
-      function acceptIncident(incidentId) {
+        
+    function acceptIncident(incidentId) {
         socket.emit("accept-incident", { incidentId, driverId });
         alert(`Incident #${incidentId} accepted! Route initiated.`);
 
-        // Remove the item from feed after accepting
         const item = document.querySelector(`li[data-id="${incidentId}"]`);
         if (item) item.remove();
-      }
+    }
 
-      function declineIncident(buttonElement, incidentId) {
-        const li = buttonElement.closest("li");
-        li.remove();
-
-        // Check if list is empty and show waiting message if needed
-        const list = document.getElementById("incidentsList");
-        if (list.children.length === 0) {
-          list.innerHTML =
-            '<li style="color: var(--text-secondary); text-align: center;">Waiting for incoming emergency broadcasts...</li>';
-        }
-        console.log(`Incident #${incidentId} declined by driver.`);
-      }
-
-      function acceptIncident(incidentId) {
-        socket.emit("accept-incident", { incidentId, driverId });
-        alert(`Incident #${incidentId} accepted! Route initiated.`);
-
-        // Remove the item from feed after accepting
-        const item = document.querySelector(`li[data-id="${incidentId}"]`);
-        if (item) item.remove();
-      }
-
-      function declineIncident(buttonElement, incidentId) {
-        // Notify server that this driver declined the incident
+    function declineIncident(buttonElement, incidentId) {
         socket.emit("decline-incident", { incidentId, driverId });
 
         const li = buttonElement.closest("li");
         li.remove();
 
-        // Check if list is empty and show waiting message if needed
         const list = document.getElementById("incidentsList");
         if (list.children.length === 0) {
-          list.innerHTML =
-            '<li style="color: var(--text-secondary); text-align: center;">Waiting for incoming emergency broadcasts...</li>';
+            list.innerHTML =
+                '<li style="color: var(--text-secondary); text-align: center;">Waiting for incoming emergency broadcasts...</li>';
         }
         alert(`Incident #${incidentId} declined.`);
-      }
-    </script>
-  </body>
-</html>
+    }
+</script>
+
+<%- include('partials/footer') %>

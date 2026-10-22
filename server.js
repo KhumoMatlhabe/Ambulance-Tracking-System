@@ -1,6 +1,8 @@
 // server.js
 const express = require('express');
 const http = require('http');
+require('dotenv').config();
+console.log("Database URL loaded:", process.env.DATABASE_URL ? "Yes (Length: " + process.env.DATABASE_URL.length + ")" : "NO - MISSING!");
 const socketio = require('socket.io');
 const session = require('express-session');
 const path = require('path');
@@ -22,7 +24,16 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// Authentication Middleware for standard users (Patients/Drivers)
+app.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Session destruction error:', err);
+        }
+        res.redirect('/login');
+    });
+});
+
+// --- Authentication Middleware ---
 function ensureAuthenticated(req, res, next) {
     if (req.session && req.session.user) {
         return next();
@@ -30,13 +41,18 @@ function ensureAuthenticated(req, res, next) {
     return res.redirect('/login');
 }
 
-// Admin / Staff Authentication Middleware
 function ensureAdmin(req, res, next) {
     if (req.session && req.session.user && (req.session.user.role === 'Administrator' || req.session.user.role === 'admin')) {
         return next();
     }
     return res.redirect('/admin-login');
 }
+
+app.get('/logout', (req, res) => {
+    req.session.destroy(() => {
+        res.redirect('/login');
+    });
+});
 
 // --- Public Views ---
 app.get('/', (req, res) => res.render('about'));
@@ -117,6 +133,25 @@ app.post('/driver-login', async (req, res) => {
     }
 });
 
+app.get('/driver-register', (req, res) => res.render('driver-register', { error: null }));
+
+app.post('/driver-register', async (req, res) => {
+    const { username, email, password, vehicle_id } = req.body;
+    try {
+        const query = `
+            INSERT INTO drivers (username, email, password, availability_status, vehicle_id)
+            VALUES ($1, $2, $3, 'Online', $4)
+            RETURNING id, username, email, availability_status;
+        `;
+        const result = await pool.query(query, [username, email, password, vehicle_id || 'Ambulance-101']);
+        req.session.user = { ...result.rows[0], userType: 'driver' };
+        res.redirect('/driver');
+    } catch (err) {
+        console.error('Driver registration error:', err.message);
+        res.status(400).render('driver-register', { error: 'Registration failed. Email or username may already be in use.' });
+    }
+});
+
 app.get('/driver', ensureAuthenticated, async (req, res) => {
     try {
         const result = await pool.query('SELECT id, username, email, availability_status FROM drivers WHERE id = $1', [req.session.user.id]);
@@ -178,16 +213,33 @@ app.get('/admin', ensureAdmin, async (req, res) => {
             FROM incidents;
         `;
         const statsResult = await pool.query(statsQuery);
+        const incidents = await pool.query('SELECT * FROM incidents ORDER BY created_at DESC');
+        const drivers = await pool.query('SELECT * FROM drivers');
+        const appointments = await pool.query('SELECT * FROM appointments ORDER BY appointment_date ASC');
         const staffResult = await pool.query('SELECT * FROM staff ORDER BY created_at DESC;');
         
         res.render('admin', { 
             user: { username: req.session.user.name || req.session.user.username }, 
             stats: statsResult.rows[0] || { total_incidents: 0, open_incidents: 0, assigned_incidents: 0 },
+            incidents: incidents.rows,
+            drivers: drivers.rows,
+            appointments: appointments.rows,
             staff: staffResult.rows 
         });
     } catch (err) {
         console.error('Admin dashboard error:', err.message);
-        res.render('admin', { user: { username: 'Administrator' }, stats: {}, staff: [] });
+        res.status(500).send('Server Error');
+    }
+});
+
+app.post('/admin/appointments/:id/confirm', ensureAdmin, async (req, res) => {
+    const appointmentId = req.params.id;
+    try {
+        await pool.query("UPDATE appointments SET status = 'Confirmed' WHERE id = $1", [appointmentId]);
+        res.redirect('/admin');
+    } catch (err) {
+        console.error('Error confirming appointment:', err.message);
+        res.status(500).send('Error updating appointment status');
     }
 });
 
@@ -201,31 +253,35 @@ app.post('/api/staff/add', ensureAdmin, async (req, res) => {
         const query = `
             INSERT INTO staff (name, email, password, role, status)
             VALUES ($1, $2, $3, $4, 'Active')
-            RETURNING *;
+            RETURNING id, name, email, role;
         `;
         const result = await pool.query(query, [name, email, password || 'defaultpassword123', role]);
         res.status(200).json({ success: true, staff: result.rows[0] });
     } catch (err) {
         console.error('Error adding staff member:', err.message);
+        if (err.code === '23505') {
+            return res.status(400).json({ success: false, error: 'A staff member with this email already exists.' });
+        }
         res.status(500).json({ success: false, error: 'Failed to add staff member. Email may already exist.' });
     }
 });
 
 app.post('/api/book-appointment', ensureAuthenticated, async (req, res) => {
-    const { hospitalName, department, appointmentDate } = req.body;
-    const userEmail = req.session.user.email || req.session.user.username;
+    const { appointment_date, symptoms, hospital_name } = req.body;
+    const patientId = req.session.user.id;
+    const patientEmail = req.session.user.email;
 
     try {
         const query = `
-            INSERT INTO appointments (user_email, hospital_name, department, appointment_date, status)
-            VALUES ($1, $2, $3, $4, 'confirmed')
-            RETURNING *;
+            INSERT INTO appointments (patient_id, patient_email, appointment_date, symptoms, hospital_name, status)
+            VALUES ($1, $2, $3, $4, $5, 'Pending')
+            RETURNING id, appointment_date, hospital_name, status;
         `;
-        const result = await pool.query(query, [userEmail, hospitalName, department, appointmentDate]);
-        res.status(200).json({ success: true, appointment: result.rows[0] });
+        const result = await pool.query(query, [patientId, patientEmail, appointment_date, symptoms, hospital_name || 'General Facility']);
+        res.json({ success: true, appointment: result.rows[0] });
     } catch (err) {
         console.error('Appointment booking error:', err.message);
-        res.status(500).json({ success: false, error: 'Failed to book appointment.' });
+        res.status(500).json({ success: false, error: 'Database error while booking.' });
     }
 });
 
@@ -245,7 +301,6 @@ app.post('/api/wallet/topup', ensureAuthenticated, async (req, res) => {
             RETURNING wallet_balance;
         `;
         const result = await pool.query(query, [amount, userId]);
-        
         req.session.user.wallet_balance = result.rows[0].wallet_balance;
 
         res.status(200).json({ 
@@ -298,11 +353,9 @@ app.post('/api/admin/driver/status', ensureAdmin, async (req, res) => {
 
 app.post('/api/admin/assign-incident', ensureAdmin, async (req, res) => {
     const { incidentId, driverId } = req.body;
-    
     if (!incidentId || !driverId) {
         return res.status(400).json({ success: false, error: 'Incident ID and Driver ID are required.' });
     }
-
     try {
         const query = `
             UPDATE incidents 
@@ -311,19 +364,15 @@ app.post('/api/admin/assign-incident', ensureAdmin, async (req, res) => {
             RETURNING *;
         `;
         const result = await pool.query(query, [driverId, incidentId]);
-
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, error: 'Incident not found.' });
         }
-
         const updatedIncident = result.rows[0];
-
         io.emit('incident-assigned', {
             incidentId: updatedIncident.id,
             driverId: driverId,
             status: updatedIncident.status
         });
-
         res.status(200).json({ success: true, incident: updatedIncident });
     } catch (err) {
         console.error('Error assigning ambulance:', err.message);
@@ -341,18 +390,35 @@ io.on('connection', (socket) => {
         try {
             const { description, latitude, longitude } = data;
 
+            // 1. Check for an available online driver to auto-assign
+            const driverQuery = `
+                SELECT id FROM drivers 
+                WHERE availability_status = 'Online' 
+                ORDER BY id ASC 
+                LIMIT 1;
+            `;
+            const driverResult = await pool.query(driverQuery);
+            const assignedDriver = driverResult.rows[0] || null;
+
+            const incidentStatus = assignedDriver ? 'assigned' : 'open';
+            const claimedBy = assignedDriver ? assignedDriver.id : null;
+
+            // 2. Insert incident into database with auto-assigned status
             const incidentQuery = `
-                INSERT INTO incidents (description, latitude, longitude, status)
-                VALUES ($1, $2, $3, 'open')
+                INSERT INTO incidents (description, latitude, longitude, status, claimed_by)
+                VALUES ($1, $2, $3, $4, $5)
                 RETURNING *;
             `;
             const incidentResult = await pool.query(incidentQuery, [
                 description || 'Medical Emergency',
                 latitude,
-                longitude
+                longitude,
+                incidentStatus,
+                claimedBy
             ]);
             const newIncident = incidentResult.rows[0];
 
+            // 3. Find the nearest hospital
             const hospitalQuery = `
                 SELECT name, latitude, longitude,
                 (
@@ -363,16 +429,28 @@ io.on('connection', (socket) => {
                     )
                 ) AS distance_km
                 FROM hospitals
+                WHERE emergency_services = TRUE
                 ORDER BY distance_km ASC
                 LIMIT 1;
             `;
             const hospitalResult = await pool.query(hospitalQuery, [latitude, longitude]);
             const nearestHospital = hospitalResult.rows[0] || null;
 
+            // 4. Broadcast the incident to all connected clients
             io.emit('new-incident', {
                 ...newIncident,
                 nearestHospital
             });
+
+            // 5. If auto-assigned, notify the specific driver immediately
+            if (assignedDriver) {
+                io.emit('incident-assigned', {
+                    incidentId: newIncident.id,
+                    driverId: assignedDriver.id,
+                    status: 'assigned'
+                });
+                console.log(`⚡ Auto-assigned Incident #${newIncident.id} to Driver #${assignedDriver.id}`);
+            }
         } catch (err) {
             console.error('Error handling emergency request:', err.message);
         }
@@ -404,7 +482,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Handle Driver Declining an Incident (Inside connection scope)
     socket.on('decline-incident', async (data) => {
         const { incidentId, driverId } = data;
         try {
@@ -430,21 +507,27 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send-location', async (data = {}) => {
-        const { vehicleId, latitude, longitude } = data;
-        activeVehicles[socket.id] = { latitude, longitude };
-        io.emit('receive-location', { id: socket.id, ...data });
+    const { vehicleId, latitude, longitude } = data;
+    activeVehicles[socket.id] = { latitude, longitude };
+    io.emit('receive-location', { id: socket.id, ...data });
 
-        if (vehicleId) {
-            try {
+    if (vehicleId) {
+        try {
+            // Verify that the driver ID actually exists in the drivers table first
+            const driverCheck = await pool.query('SELECT id FROM drivers WHERE id = $1', [vehicleId]);
+            if (driverCheck.rows.length > 0) {
                 await pool.query(
-                    'INSERT INTO location_logs (vehicle_id, latitude, longitude) VALUES ($1, $2, $3)',
+                    'INSERT INTO location_logs (driver_id, latitude, longitude) VALUES ($1, $2, $3)',
                     [vehicleId, latitude, longitude]
                 );
-            } catch (err) {
-                console.error('Failed to log vehicle location:', err.message);
             }
+        } catch (err) {
+            console.error('Failed to log vehicle location:', err.message);
         }
-    });
+    }
+});
+
+   
 
     socket.on('ambulance-status-update', (data) => {
         let alertMessage = `Ambulance ${data.ambulanceId} status: ${data.status}`;
@@ -465,190 +548,19 @@ io.on('connection', (socket) => {
     });
 });
 
-// --- Driver Registration Routes ---
-app.get('/driver-register', (req, res) => res.render('driver-register', { error: null }));
 
-app.post('/driver-register', async (req, res) => {
-    const { username, email, password, vehicle_id } = req.body;
-    try {
-        const query = `
-            INSERT INTO drivers (username, email, password, availability_status, vehicle_id)
-            VALUES ($1, $2, $3, 'Online', $4)
-            RETURNING id, username, email, availability_status;
-        `;
-        const result = await pool.query(query, [username, email, password, vehicle_id || 'Ambulance-101']);
-        req.session.user = { ...result.rows[0], userType: 'driver' };
-        res.redirect('/driver');
-    } catch (err) {
-        console.error('Driver registration error:', err.message);
-        res.status(400).render('driver-register', { error: 'Registration failed. Email or username may already be in use.' });
-    }
-});
-
-// --- Driver Registration Routes ---
-app.get('/driver-register', (req, res) => {
-    res.render('driver-register', { error: null });
-});
-
-app.post('/driver-register', async (req, res) => {
-    const { username, email, password, vehicle_id } = req.body;
-    try {
-        const query = `
-            INSERT INTO drivers (username, email, password, availability_status, vehicle_id)
-            VALUES ($1, $2, $3, 'Online', $4)
-            RETURNING id, username, email, availability_status;
-        `;
-        const result = await pool.query(query, [username, email, password, vehicle_id || 'Ambulance-101']);
-        req.session.user = { ...result.rows[0], userType: 'driver' };
-        res.redirect('/driver');
-    } catch (err) {
-        console.error('Driver registration error:', err.message);
-        res.status(400).render('driver-register', { error: 'Registration failed. Email or username may already be in use.' });
-    }
-});
-
-// --- Authentication Routes ---
-
-// Patient Login / Register
-app.get('/login', (req, res) => res.render('login', { error: null }));
-app.get('/register', (req, res) => res.render('register', { error: null }));
-
-// Driver Login / Register (MAKE SURE THESE EXIST)
-app.get('/driver-login', (req, res) => res.render('driver-login', { error: null }));
-
-app.get('/driver-register', (req, res) => {
-    res.render('driver-register', { error: null });
-});
-
-app.post('/driver-register', async (req, res) => {
-    const { username, email, password, vehicle_id } = req.body;
-    try {
-        const query = `
-            INSERT INTO drivers (username, email, password, availability_status, vehicle_id)
-            VALUES ($1, $2, $3, 'Online', $4)
-            RETURNING id, username, email, availability_status;
-        `;
-        const result = await pool.query(query, [username, email, password, vehicle_id || 'Ambulance-101']);
-        req.session.user = { ...result.rows[0], userType: 'driver' };
-        res.redirect('/driver');
-    } catch (err) {
-        console.error('Driver registration error:', err.message);
-        res.status(400).render('driver-register', { error: 'Registration failed. Email or username may already be in use.' });
-    }
-});
-
-
-// Function to find the nearest hospital from database
-async function findNearestHospital(lat, lon) {
-    try {
-        const query = `
-            SELECT id, name, city, province, latitude, longitude,
-            ( 6371 * acos( cos( radians($1) ) * cos( radians( latitude ) ) 
-            * cos( radians( longitude ) - radians($2) ) + sin( radians($1) ) 
-            * sin( radians( latitude ) ) ) ) AS distance_km
-            FROM hospitals
-            WHERE emergency_services = TRUE
-            ORDER BY distance_km ASC
-            LIMIT 1;
-        `;
-        const result = await pool.query(query, [lat, lon]);
-        return result.rows[0] || null;
-    } catch (err) {
-        console.error('Error finding nearest hospital:', err.message);
-        return null;
-    }
-}
-
-// 1. Handle Patient Appointment Submission
-app.post('/api/book-appointment', async (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ success: false, error: 'Unauthorized. Please sign in.' });
-    }
-
-    const { appointment_date, symptoms } = req.body;
-    const patientId = req.session.user.id;
-    const patientEmail = req.session.user.email;
-
-    try {
-        const query = `
-            INSERT INTO appointments (patient_id, patient_email, appointment_date, symptoms, status)
-            VALUES ($1, $2, $3, $4, 'Pending')
-            RETURNING id, appointment_date, status;
-        `;
-        const result = await pool.query(query, [patientId, patientEmail, appointment_date, symptoms]);
-        res.json({ success: true, appointment: result.rows[0] });
-    } catch (err) {
-        console.error('Appointment booking error:', err.message);
-        res.status(500).json({ success: false, error: 'Database error while booking.' });
-    }
-});
-
-// 2. Doctor/Admin Dashboard Route to View Appointments
-app.get('/admin/appointments', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM appointments ORDER BY appointment_date ASC');
-        res.render('admin-appointments', { appointments: result.rows, user: req.session.user });
-    } catch (err) {
-        console.error('Error fetching appointments:', err.message);
-        res.status(500).send('Server Error');
-    }
-});
-
-// 3. Confirm/Accept Appointment Route
-app.post('/admin/appointments/:id/confirm', async (req, res) => {
-    const appointmentId = req.params.id;
-    try {
-        await pool.query("UPDATE appointments SET status = 'Confirmed' WHERE id = $1", [appointmentId]);
-        res.redirect('/admin/appointments');
-    } catch (err) {
-        console.error('Error confirming appointment:', err.message);
-        res.status(500).send('Error updating appointment status');
-    }
-});
-
-app.get('/admin', async (req, res) => {
-    // Optional: add admin authentication check here
-    try {
-        const incidents = await pool.query('SELECT * FROM incidents ORDER BY created_at DESC');
-        const drivers = await pool.query('SELECT * FROM drivers');
-        const appointments = await pool.query('SELECT * FROM appointments ORDER BY appointment_date ASC');
-
-        res.render('admin', { 
-            user: req.session.user, 
-            incidents: incidents.rows, 
-            drivers: drivers.rows,
-            appointments: appointments.rows 
-        });
-    } catch (err) {
-        console.error('Error loading admin dashboard:', err.message);
-        res.status(500).send('Server Error');
-    }
-});
-
-// Route to handle confirming appointments from the admin panel
-app.post('/admin/appointments/:id/confirm', async (req, res) => {
-    const appointmentId = req.params.id;
-    try {
-        await pool.query("UPDATE appointments SET status = 'Confirmed' WHERE id = $1", [appointmentId]);
-        res.redirect('/admin');
-    } catch (err) {
-        console.error('Error confirming appointment:', err.message);
-        res.status(500).send('Error updating appointment status');
-    }
-});
-
-
-// route to capture the hospital selection from the patient form and store it in the database
-app.post('/api/book-appointment', async (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ success: false, error: 'Unauthorized. Please sign in.' });
-    }
-
+app.post('/api/book-appointment', ensureAuthenticated, async (req, res) => {
     const { appointment_date, symptoms, hospital_name } = req.body;
     const patientId = req.session.user.id;
     const patientEmail = req.session.user.email;
 
     try {
+        // Verify patient exists in the database
+        const patientCheck = await pool.query('SELECT id, email FROM patients WHERE id = $1', [patientId]);
+        if (patientCheck.rows.length === 0) {
+            return res.status(401).json({ success: false, error: 'Session expired or patient record not found. Please log in again.' });
+        }
+
         const query = `
             INSERT INTO appointments (patient_id, patient_email, appointment_date, symptoms, hospital_name, status)
             VALUES ($1, $2, $3, $4, $5, 'Pending')
@@ -661,11 +573,6 @@ app.post('/api/book-appointment', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error while booking.' });
     }
 });
-
-
-
-
-
 
 // --- Start Server ---
 const PORT = process.env.PORT || 3000;
